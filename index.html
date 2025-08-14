@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="th">
 <head>
@@ -99,7 +100,7 @@
                     <select id="login-charger" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"></select>
                 </div>
                 <div>
-                    <label for="login-password" class="block text-sm font-semibold text-gray-700 mb-2">รหัสผ่านพนักงาน</label>
+                    <label for="login-password" class="block text-sm font-semibold text-gray-700 mb-2">รหัสผ่าน</label>
                     <input type="password" id="login-password" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="กรอกรหัสผ่านของคุณ">
                 </div>
                 <button id="login-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition duration-200 shadow-lg">
@@ -178,12 +179,12 @@
                         <!-- Row 2: Mileage -->
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
-                                <label class="block text-sm font-semibold text-gray-700 mb-2">เลขไมล์ครั้งก่อน(H)</label>
+                                <label class="block text-sm font-semibold text-gray-700 mb-2">เลขไมล์ครั้งก่อน</label>
                                 <input type="number" id="previousMileage" name="previousMileage" step="0.1" required readonly
                                        class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50" placeholder="เลือกทะเบียนรถก่อน">
                             </div>
                             <div>
-                                <label class="block text-sm font-semibold text-gray-700 mb-2">เลขไมล์ครั้งปัจจุบัน(H)</label>
+                                <label class="block text-sm font-semibold text-gray-700 mb-2">เลขไมล์ครั้งปัจจุบัน</label>
                                 <input type="number" id="currentMileage" name="currentMileage" step="0.1" required
                                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                             </div>
@@ -346,7 +347,7 @@
         let appId = 'sodium-burner-428202-f9'; 
         let currentUser = null; 
         let allUsers = {};
-        let chargingIntervals = {}; // To manage animation intervals
+        let chargingIntervals = {}; 
 
         let vehicleStatuses = {};
         let chargerStatuses = {};
@@ -418,7 +419,7 @@
             if (Notification.permission === "granted") {
                 new Notification('ชาร์จเต็มแล้ว!', {
                     body: `รถทะเบียน ${session.licensePlate} ชาร์จเสร็จสิ้นแล้ว`,
-                    icon: 'https://placehold.co/192x192/3B82F6/FFFFFF?text=EV' // A simple icon
+                    icon: 'https://placehold.co/192x192/3B82F6/FFFFFF?text=EV'
                 });
             }
         }
@@ -744,7 +745,7 @@
                 const card = document.createElement('div');
                 let statusColor = '', statusText = '', statusIcon = '';
                 switch(status.status) {
-                    case 'available': statusColor = 'border-green-200 bg-green-50'; statusText = 'พร้อมใช้งาน'; statusIcon = '🔌'; break;
+                    case 'available': statusColor = 'border-green-200 bg-green-50'; statusText = 'พร้อมใช้งาน'; statusIcon = '�'; break;
                     case 'in-use': statusColor = 'border-orange-200 bg-orange-50'; statusText = 'กำลังใช้งาน'; statusIcon = '⚡'; break;
                     case 'out-of-service': statusColor = 'border-red-200 bg-red-50'; statusText = 'ไม่พร้อมใช้งาน'; statusIcon = '❌'; break;
                 }
@@ -828,7 +829,10 @@
                                 <div class="battery-level" id="level-${session.sessionId}"></div>
                                 <svg class="charging-bolt" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M11 21V12.9H9L13 3V11.1H15L11 21Z"></path></svg>
                             </div>
-                            <span id="percent-${session.sessionId}" class="text-lg font-bold text-gray-700 w-12 text-left">--%</span>
+                            <div class="flex flex-col items-start">
+                                <span id="percent-${session.sessionId}" class="text-lg font-bold text-gray-700 w-12 text-left">--%</span>
+                                <span id="full-time-${session.sessionId}" class="text-xs text-gray-500 mt-1">เต็มเวลา: คำนวณ...</span>
+                            </div>
                         </div>
                     `;
                     const buttonClass = canInteract ? 'bg-red-600 hover:bg-red-700' : 'bg-gray-400 cursor-not-allowed';
@@ -844,10 +848,20 @@
                     const startPercent = parseFloat(session.kwhBefore);
                     const batteryLevelDiv = document.getElementById(`level-${session.sessionId}`);
                     const percentText = document.getElementById(`percent-${session.sessionId}`);
+                    const fullTimeText = document.getElementById(`full-time-${session.sessionId}`);
                     
                     if(batteryLevelDiv) batteryLevelDiv.style.height = `${startPercent}%`;
                     if(percentText) percentText.textContent = `${Math.floor(startPercent)}%`;
 
+                    const calculateFullTime = () => {
+                        const remainingPercent = 100 - startPercent;
+                        const remainingMinutes = remainingPercent * 1.45;
+                        const fullTime = new Date(new Date(session.startedAt).getTime() + remainingMinutes * 60000);
+                        if(fullTimeText) fullTimeText.textContent = `เต็มเวลา: ${fullTime.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}`;
+                    };
+
+                    calculateFullTime();
+                    
                     chargingIntervals[session.sessionId] = setInterval(() => {
                         const elapsedMilliseconds = Date.now() - new Date(session.startedAt).getTime();
                         const elapsedMinutes = elapsedMilliseconds / 60000;
@@ -900,27 +914,57 @@
                 startedBy: currentUser.name,
                 startedAt: now.toISOString()
             };
-            
-            const batch = writeBatch(db);
-            const activeSessionRef = doc(db, `artifacts/${appId}/active_sessions`, sessionId);
-            batch.set(activeSessionRef, newSession);
-            
-            const stateDocRef = doc(db, `artifacts/${appId}/state/main`);
-            batch.update(stateDocRef, {
-                [`vehicleStatuses.${licensePlate}.status`]: 'charging',
-                [`vehicleStatuses.${licensePlate}.sessionId`]: sessionId,
-                [`chargerStatuses.${chargerName}.status`]: 'in-use',
-                [`chargerStatuses.${chargerName}.sessionId`]: sessionId
-            });
 
-            try {
-                await batch.commit();
-                resetNewChargingForm();
-                Swal.fire('เริ่มชาร์จแล้ว!', `เริ่มบันทึกการชาร์จสำหรับรถ ${licensePlate}`, 'success');
-            } catch (error) {
-                console.error("Error starting charging session:", error);
-                Swal.fire('เกิดข้อผิดพลาด', 'ไม่สามารถเริ่มการชาร์จได้', 'error');
-            }
+            const remainingPercent = 100 - parseFloat(newSession.kwhBefore);
+            const remainingMinutes = remainingPercent * 1.45;
+            const fullTime = new Date(now.getTime() + remainingMinutes * 60000);
+            const fullTimeText = fullTime.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+            
+            Swal.fire({
+                title: 'ยืนยันการเริ่มชาร์จ',
+                html: `
+                    คุณต้องการเริ่มชาร์จรถ ${licensePlate} ใช่หรือไม่?<br>
+                    <div class="mt-4">เวลาที่แบตจะเต็มโดยประมาณ: <span class="font-bold text-green-600">${fullTimeText}</span></div>
+                `,
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#10B981',
+                cancelButtonColor: '#6B7280',
+                confirmButtonText: 'ใช่, เริ่มชาร์จเลย',
+                cancelButtonText: 'ยกเลิก'
+            }).then(async (result) => {
+                if (result.isConfirmed) {
+                    Swal.fire({ title: 'กำลังบันทึก...', html: 'กรุณารอสักครู่', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+                    
+                    const batch = writeBatch(db);
+                    const activeSessionRef = doc(db, `artifacts/${appId}/active_sessions`, sessionId);
+                    batch.set(activeSessionRef, newSession);
+                    
+                    const stateDocRef = doc(db, `artifacts/${appId}/state/main`);
+                    batch.update(stateDocRef, {
+                        [`vehicleStatuses.${licensePlate}.status`]: 'charging',
+                        [`vehicleStatuses.${licensePlate}.sessionId`]: sessionId,
+                        [`chargerStatuses.${chargerName}.status`]: 'in-use',
+                        [`chargerStatuses.${chargerName}.sessionId`]: sessionId
+                    });
+
+                    try {
+                        await batch.commit();
+                        
+                        if (vehicleStatuses[licensePlate]) {
+                            vehicleStatuses[licensePlate].lastMileage = currentMileage;
+                        }
+
+                        Swal.fire('เริ่มชาร์จแล้ว!', `เริ่มบันทึกการชาร์จสำหรับรถ ${licensePlate}`, 'success');
+                        
+                        resetNewChargingForm();
+
+                    } catch (error) {
+                        console.error("Error starting charging session:", error);
+                        Swal.fire('เกิดข้อผิดพลาด', 'ไม่สามารถเริ่มการชาร์จได้', 'error');
+                    }
+                }
+            });
         });
 
         window.finishAndSaveCharging = async function(sessionId) {
@@ -1248,7 +1292,6 @@
             let totalSessions = 0, totalCost = 0, totalUnits = 0, totalMinutes = 0;
             const vehicleStats = {}, monthlyData = {}, chargerStats = {};
             
-            // Initialize stats for all vehicles and chargers to ensure they appear in the summary
             vehicles.forEach(v => { vehicleStats[v] = { sessions: 0, cost: 0, units: 0, minutes: 0 }; });
             chargers.forEach(c => { chargerStats[c] = { sessions: 0, cost: 0, units: 0, minutes: 0 }; });
 
@@ -1389,9 +1432,9 @@
                                         label += ': ';
                                     }
                                     if (context.parsed.y !== null) {
-                                        if (context.dataset.yAxisID === 'y') { // Cost axis
+                                        if (context.dataset.yAxisID === 'y') {
                                             label += '฿' + context.parsed.y.toFixed(2);
-                                        } else { // Session count axis
+                                        } else {
                                             label += context.parsed.y;
                                         }
                                     }
@@ -1497,5 +1540,4 @@
     </script>
 </body>
 </html>
-
-
+�
