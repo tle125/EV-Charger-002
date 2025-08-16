@@ -1,9 +1,7 @@
-
 <!DOCTYPE html>
 <html lang="th">
 <head>
     <link rel="icon" type="image/png" href="https://img.icons8.com/?size=60&id=TWbqiKCn9IRk&format=png">
-
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ระบบบันทึกการชาร์จไฟรถไฟฟ้า - Firebase Real-time</title>
@@ -82,32 +80,65 @@
 </head>
 <body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen">
     <!-- Login Overlay -->
-    <div id="login-overlay" class="fixed inset-0 bg-slate-900 bg-opacity-70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-        <div class="bg-white rounded-2xl shadow-2xl p-6 sm:p-8 w-full max-w-md">
-            <h2 class="text-2xl sm:text-3xl font-bold text-center text-gray-800 mb-2">🔐 ยืนยันตัวตน</h2>
-            <p class="text-center text-gray-500 mb-6">กรุณาเข้าสู่ระบบเพื่อใช้งาน</p>
-            <div class="space-y-4">
-                <div>
-                    <label for="login-user" class="block text-sm font-semibold text-gray-700 mb-2">ชื่อผู้ใช้</label>
-                    <select id="login-user" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-                        <option value="">กำลังโหลดรายชื่อ...</option>
-                    </select>
+    <div id="login-overlay" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center z-50 p-4 transition-opacity duration-300">
+        <div class="bg-white w-full max-w-4xl rounded-2xl shadow-2xl overflow-hidden grid grid-cols-1 md:grid-cols-2">
+            <!-- Form Section -->
+            <div class="p-6 sm:p-10 flex flex-col justify-center">
+                <div class="text-center mb-6">
+                    <svg class="w-16 h-16 mx-auto text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M11.25 4.5l7.5 7.5-7.5 7.5m-6-15l7.5 7.5-7.5 7.5" />
+                    </svg>
+                    <h2 class="text-3xl font-bold text-gray-800 mt-2">เข้าสู่ระบบ</h2>
+                    <p class="text-gray-500">เพื่อเริ่มบันทึกการชาร์จ</p>
                 </div>
-                <div id="login-vehicle-wrapper">
-                    <label for="login-vehicle" class="block text-sm font-semibold text-gray-700 mb-2">ทะเบียนรถ</label>
-                    <select id="login-vehicle" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"></select>
+                <div class="space-y-4">
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <svg class="w-5 h-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                              <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd" />
+                            </svg>
+                        </div>
+                        <select id="login-user" class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 appearance-none">
+                            <option value="">กำลังโหลดรายชื่อ...</option>
+                        </select>
+                    </div>
+                    <div id="login-vehicle-wrapper" class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                           <svg class="w-5 h-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M1.5 5.333A2.333 2.333 0 013.833 3h12.334A2.333 2.333 0 0118.5 5.333v9.334A2.333 2.333 0 0116.167 17H3.833A2.333 2.333 0 011.5 14.667V5.333zM3.833 4.5a.833.833 0 00-.833.833v9.334c0 .46.373.833.833.833h12.334a.833.833 0 00.833-.833V5.333a.833.833 0 00-.833-.833H3.833z" clip-rule="evenodd" /><path fill-rule="evenodd" d="M9.167 11.5a.5.5 0 01.5-.5h2.666a.5.5 0 010 1H9.667a.5.5 0 01-.5-.5z" clip-rule="evenodd" /></svg>
+                        </div>
+                        <select id="login-vehicle" class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 appearance-none"></select>
+                    </div>
+                    <div id="login-charger-wrapper" class="relative">
+                         <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <svg class="w-5 h-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M11.25 4.5l7.5 7.5-7.5 7.5m-6-15l7.5 7.5-7.5 7.5" /></svg>
+                        </div>
+                        <select id="login-charger" class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 appearance-none"></select>
+                    </div>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <svg class="w-5 h-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                              <path fill-rule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 0010 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clip-rule="evenodd" />
+                            </svg>
+                        </div>
+                        <input type="password" id="login-password" class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="รหัสผ่าน">
+                    </div>
+                    <button id="login-btn" class="w-full bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-700 hover:to-cyan-600 text-white font-bold py-3 px-4 rounded-lg transition duration-200 shadow-lg transform hover:scale-105">
+                        เข้าสู่ระบบ
+                    </button>
                 </div>
-                <div id="login-charger-wrapper">
-                    <label for="login-charger" class="block text-sm font-semibold text-gray-700 mb-2">เครื่องชาร์จ</label>
-                    <select id="login-charger" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"></select>
+            </div>
+            <!-- Image Section -->
+            <div class="hidden md:flex items-center justify-center bg-gradient-to-br from-blue-600 to-indigo-700 p-10">
+                 <div class="text-white text-center">
+                    <svg class="w-48 h-48 mx-auto" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M100 25C141.421 25 175 58.5786 175 100C175 141.421 141.421 175 100 175C58.5786 175 25 141.421 25 100C25 58.5786 58.5786 25 100 25Z" stroke="white" stroke-width="10"/>
+                        <path d="M92.8571 142.857V107.143H71.4286L107.143 50V85.7143H128.571L92.8571 142.857Z" fill="white"/>
+                    </svg>
+                    <h1 class="text-3xl font-bold mt-6">EV Charging System</h1>
+                    <p class="mt-2 opacity-80">ระบบบันทึกข้อมูลการชาร์จแบบ Real-time</p>
+                    <p class="mt-2 opacity-80 font-bold mt-2">Warehouse-1</p>
+
                 </div>
-                <div>
-                    <label for="login-password" class="block text-sm font-semibold text-gray-700 mb-2">รหัสผ่าน</label>
-                    <input type="password" id="login-password" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="กรอกรหัสผ่านของคุณ">
-                </div>
-                <button id="login-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition duration-200 shadow-lg">
-                    เข้าสู่ระบบ
-                </button>
             </div>
         </div>
     </div>
@@ -747,7 +778,7 @@
                 const card = document.createElement('div');
                 let statusColor = '', statusText = '', statusIcon = '';
                 switch(status.status) {
-                    case 'available': statusColor = 'border-green-200 bg-green-50'; statusText = 'พร้อมใช้งาน'; statusIcon = '✔️'; break;
+                    case 'available': statusColor = 'border-green-200 bg-green-50'; statusText = 'พร้อมใช้งาน'; statusIcon = '🔌'; break;
                     case 'in-use': statusColor = 'border-orange-200 bg-orange-50'; statusText = 'กำลังใช้งาน'; statusIcon = '⚡'; break;
                     case 'out-of-service': statusColor = 'border-red-200 bg-red-50'; statusText = 'ไม่พร้อมใช้งาน'; statusIcon = '❌'; break;
                 }
@@ -801,6 +832,16 @@
             }
         };
 
+        function getPricePerUnit(startTimeString) {
+            const [startHours, startMinutes] = startTimeString.split(':').map(Number);
+            const timeInMinutes = startHours * 60 + startMinutes;
+            if ((timeInMinutes >= 720 && timeInMinutes < 780) || (timeInMinutes >= 1020 && timeInMinutes < 1050)) {
+                return 4.1839; // Peak
+            } else if ((timeInMinutes >= 0 && timeInMinutes < 60) || (timeInMinutes >= 300 && timeInMinutes < 330)) {
+                return 2.6037; // Off-peak
+            }
+            return 3.5000; // Normal
+        }
 
         function updateActiveChargingSessions(activeSessions) {
             const container = document.getElementById('activeChargingSessions');
@@ -842,8 +883,25 @@
                     const buttonTitle = canInteract ? '' : 'คุณไม่มีสิทธิ์ทำรายการนี้';
                     actionButtons = `<div class="mt-4 space-y-3"><div><label class="block text-sm font-semibold text-gray-700 mb-2">เปอร์เซ็นต์หลังชาร์จ (%)</label><input type="number" id="kwhAfter-${session.sessionId}" step="1" min="0" max="100" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="เช่น 80"></div><button onclick="window.finishAndSaveCharging('${session.sessionId}')" class="w-full text-white font-semibold py-2 px-4 rounded-lg transition duration-200 ${buttonClass}" ${buttonDisabled} title="${buttonTitle}">⏹️ จบและบันทึกการชาร์จ</button></div>`;
                 }
+                
+                const realTimeDataHTML = session.status === 'charging' ? `
+                    <div class="mt-4 pt-4 border-t grid grid-cols-3 gap-2 text-center">
+                        <div>
+                            <div class="text-xs text-gray-500">หน่วย</div>
+                            <div id="units-${session.sessionId}" class="font-bold text-lg text-purple-600">0.00</div>
+                        </div>
+                        <div>
+                            <div class="text-xs text-gray-500">ค่าไฟ</div>
+                            <div id="cost-${session.sessionId}" class="font-bold text-lg text-green-600">฿0.00</div>
+                        </div>
+                        <div>
+                            <div class="text-xs text-gray-500">เวลาที่เหลือ</div>
+                            <div id="countdown-${session.sessionId}" class="font-bold text-lg text-red-600">--:--:--</div>
+                        </div>
+                    </div>
+                ` : '';
 
-                sessionCard.innerHTML = `<div class="flex justify-between items-start mb-4"><div><h3 class="text-lg font-semibold text-gray-800">${session.licensePlate}</h3><p class="text-sm text-gray-600">เริ่มเมื่อ: ${session.startTime}</p><p class="text-sm text-green-600">เครื่องชาร์จ: ${session.chargerName}</p><p class="text-sm text-gray-500 font-medium">ผู้เริ่ม: ${session.startedBy || '-'}</p></div>${statusBadge}</div><div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm"><div><span class="text-gray-600">วันที่:</span><div class="font-semibold">${session.date}</div></div><div><span class="text-gray-600">เลขไมล์:</span><div class="font-semibold">${session.previousMileage} → ${session.currentMileage}</div></div><div><span class="text-gray-600">% ก่อน:</span><div class="font-semibold">${session.kwhBefore}%</div></div><div><span class="text-gray-600">ระยะเวลา:</span><div class="font-semibold">${session.duration || 'กำลังชาร์จ'}</div></div></div>${session.status === 'completed' ? `<div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm mt-3 pt-3 border-t"><div><span class="text-gray-600">% หลัง:</span><div class="font-semibold">${session.kwhAfter}%</div></div><div><span class="text-gray-600">หน่วย:</span><div class="font-semibold">${session.units}</div></div><div><span class="text-gray-600">ราคา/หน่วย:</span><div class="font-semibold">฿${session.pricePerUnit}</div></div><div><span class="text-gray-600">ค่าไฟ:</span><div class="font-semibold text-green-600">฿${session.electricityCost}</div></div></div>` : ''}${actionButtons}`;
+                sessionCard.innerHTML = `<div class="flex justify-between items-start mb-4"><div><h3 class="text-lg font-semibold text-gray-800">${session.licensePlate}</h3><p class="text-sm text-gray-600">เริ่มเมื่อ: ${session.startTime}</p><p class="text-sm text-green-600">เครื่องชาร์จ: ${session.chargerName}</p><p class="text-sm text-gray-500 font-medium">ผู้เริ่ม: ${session.startedBy || '-'}</p></div>${statusBadge}</div><div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm"><div><span class="text-gray-600">วันที่:</span><div class="font-semibold">${session.date}</div></div><div><span class="text-gray-600">เลขไมล์:</span><div class="font-semibold">${session.previousMileage} → ${session.currentMileage}</div></div><div><span class="text-gray-600">% ก่อน:</span><div class="font-semibold">${session.kwhBefore}%</div></div><div><span class="text-gray-600">ระยะเวลา:</span><div class="font-semibold">${session.duration || 'กำลังชาร์จ'}</div></div></div>${session.status === 'completed' ? `<div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm mt-3 pt-3 border-t"><div><span class="text-gray-600">% หลัง:</span><div class="font-semibold">${session.kwhAfter}%</div></div><div><span class="text-gray-600">หน่วย:</span><div class="font-semibold">${session.units}</div></div><div><span class="text-gray-600">ราคา/หน่วย:</span><div class="font-semibold">฿${session.pricePerUnit}</div></div><div><span class="text-gray-600">ค่าไฟ:</span><div class="font-semibold text-green-600">฿${session.electricityCost}</div></div></div>` : ''}${realTimeDataHTML}${actionButtons}`;
                 container.appendChild(sessionCard);
 
                 if (session.status === 'charging') {
@@ -851,22 +909,28 @@
                     const batteryLevelDiv = document.getElementById(`level-${session.sessionId}`);
                     const percentText = document.getElementById(`percent-${session.sessionId}`);
                     const fullTimeText = document.getElementById(`full-time-${session.sessionId}`);
-                    
+                    const unitsText = document.getElementById(`units-${session.sessionId}`);
+                    const costText = document.getElementById(`cost-${session.sessionId}`);
+                    const countdownText = document.getElementById(`countdown-${session.sessionId}`);
+
+                    const pricePerUnit = getPricePerUnit(session.startTime);
+                    const totalDurationMinutes = (100 - startPercent) * 1.45;
+                    const totalDurationMs = totalDurationMinutes * 60 * 1000;
+
                     if(batteryLevelDiv) batteryLevelDiv.style.height = `${startPercent}%`;
                     if(percentText) percentText.textContent = `${Math.floor(startPercent)}%`;
 
                     const calculateFullTime = () => {
-                        const remainingPercent = 100 - startPercent;
-                        const remainingMinutes = remainingPercent * 1.45;
-                        const fullTime = new Date(new Date(session.startedAt).getTime() + remainingMinutes * 60000);
+                        const fullTime = new Date(new Date(session.startedAt).getTime() + totalDurationMs);
                         if(fullTimeText) fullTimeText.textContent = `เต็มเวลา: ${fullTime.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}`;
                     };
-
                     calculateFullTime();
                     
                     chargingIntervals[session.sessionId] = setInterval(() => {
                         const elapsedMilliseconds = Date.now() - new Date(session.startedAt).getTime();
-                        const elapsedMinutes = elapsedMilliseconds / 60000;
+                        const clampedElapsedMs = Math.min(elapsedMilliseconds, totalDurationMs);
+                        const elapsedMinutes = clampedElapsedMs / 60000;
+                        
                         const percentGained = elapsedMinutes / 1.45;
                         let currentPercent = startPercent + percentGained;
                         currentPercent = Math.min(100, currentPercent);
@@ -874,9 +938,31 @@
                         if(batteryLevelDiv) batteryLevelDiv.style.height = `${currentPercent}%`;
                         if(percentText) percentText.textContent = `${Math.floor(currentPercent)}%`;
 
-                        if (currentPercent >= 100) {
+                        const currentUnits = (elapsedMinutes * 16) / 60;
+                        if (unitsText) unitsText.textContent = currentUnits.toFixed(2);
+
+                        const currentCost = currentUnits * pricePerUnit;
+                        if (costText) costText.textContent = `฿${currentCost.toFixed(2)}`;
+                        
+                        const remainingMs = totalDurationMs - clampedElapsedMs;
+                        if (remainingMs > 0) {
+                            const remainingSeconds = Math.floor((remainingMs / 1000) % 60);
+                            const remainingMinutes = Math.floor((remainingMs / (1000 * 60)) % 60);
+                            const remainingHours = Math.floor((remainingMs / (1000 * 60 * 60)));
+                            if (countdownText) {
+                                countdownText.textContent = `${String(remainingHours).padStart(2, '0')}:${String(remainingMinutes).padStart(2, '0')}:${String(remainingSeconds).padStart(2, '0')}`;
+                            }
+                        } else {
+                             if (countdownText) countdownText.textContent = '00:00:00';
+                        }
+
+                        if (clampedElapsedMs >= totalDurationMs) {
                             clearInterval(chargingIntervals[session.sessionId]);
                             showChargingCompleteNotification(session);
+                            const finalUnits = (totalDurationMinutes * 16) / 60;
+                            if (unitsText) unitsText.textContent = finalUnits.toFixed(2);
+                            const finalCost = finalUnits * pricePerUnit;
+                            if (costText) costText.textContent = `฿${finalCost.toFixed(2)}`;
                         }
                     }, 1000);
                 }
@@ -1003,14 +1089,7 @@
                 const durationInMinutes = kwhDifference * 1.45;
                 const units = (durationInMinutes * 16) / 60;
                 
-                const [startHours, startMinutes] = session.startTime.split(':').map(Number);
-                const timeInMinutes = startHours * 60 + startMinutes;
-                let pricePerUnit = 3.5;
-                if ((timeInMinutes >= 720 && timeInMinutes < 780) || (timeInMinutes >= 1020 && timeInMinutes < 1050)) {
-                    pricePerUnit = 4.1839;
-                } else if ((timeInMinutes >= 0 && timeInMinutes < 60) || (timeInMinutes >= 300 && timeInMinutes < 330)) {
-                    pricePerUnit = 2.6037;
-                }
+                const pricePerUnit = getPricePerUnit(session.startTime);
                 const electricityCost = units * pricePerUnit;
 
                 const historyData = { 
@@ -1542,8 +1621,3 @@
     </script>
 </body>
 </html>
-�
-
-
-
-
