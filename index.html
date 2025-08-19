@@ -177,7 +177,9 @@
             <div id="new-charging-wrapper" class="bg-white rounded-2xl shadow-xl mb-8">
                 <div class="p-4 sm:p-6 border-b border-gray-200">
                     <div class="flex justify-between items-center">
-                        <h2 class="text-xl sm:text-2xl font-bold text-gray-800">➕ เริ่มการชาร์จใหม่</h2>
+                        <div class="flex items-center gap-2">
+                             <h2 class="text-xl sm:text-2xl font-bold text-gray-800">➕ เริ่มการชาร์จใหม่</h2>
+                        </div>
                         <button onclick="window.toggleNewChargingForm()" id="toggleFormBtn"
                                 class="bg-blue-100 hover:bg-blue-200 text-blue-700 px-3 sm:px-4 py-2 rounded-lg transition duration-200 font-medium text-sm">
                             <span id="toggleFormText">ซ่อน</span> 📝
@@ -885,23 +887,62 @@
                 }
                 
                 const realTimeDataHTML = session.status === 'charging' ? `
-                    <div class="mt-4 pt-4 border-t grid grid-cols-3 gap-2 text-center">
-                        <div>
-                            <div class="text-xs text-gray-500">หน่วย</div>
-                            <div id="units-${session.sessionId}" class="font-bold text-lg text-purple-600">0.00</div>
+                    <div class="text-center">
+                        <div class="text-sm text-gray-500 flex items-center justify-center gap-1">
+                            <span>หน่วย</span>
+                            <button onclick="window.showRealtimeInfo('unit')" class="text-blue-400 hover:text-blue-600">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                            </button>
                         </div>
-                        <div>
-                            <div class="text-xs text-gray-500">ค่าไฟ</div>
-                            <div id="cost-${session.sessionId}" class="font-bold text-lg text-green-600">฿0.00</div>
-                        </div>
-                        <div>
-                            <div class="text-xs text-gray-500">เวลาที่เหลือ</div>
-                            <div id="countdown-${session.sessionId}" class="font-bold text-lg text-red-600">--:--:--</div>
-                        </div>
+                        <div id="units-${session.sessionId}" class="font-bold text-2xl text-purple-600 mt-1">0.00</div>
                     </div>
+                     <div class="text-center">
+                        <div class="text-sm text-gray-500 flex items-center justify-center gap-1">
+                            <span>ค่าไฟ</span>
+                            <button onclick="window.showRealtimeInfo('cost')" class="text-blue-400 hover:text-blue-600">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                            </button>
+                        </div>
+                        <div id="cost-${session.sessionId}" class="font-bold text-2xl text-green-600 mt-1">฿0.00</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-sm text-gray-500 flex items-center justify-center gap-1">
+                            <span>เวลาที่เหลือ</span>
+                            <button onclick="window.showRealtimeInfo('time')" class="text-blue-400 hover:text-blue-600">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                            </button>
+                        </div>
+                        <div id="countdown-${session.sessionId}" class="font-bold text-2xl text-red-600 mt-1">--:--:--</div>
+                    </div>
+                ` : `
+                    <div><span class="text-gray-600">ระยะเวลา:</span><div class="font-semibold">${session.duration || '-'} นาที</div></div>
+                `;
+
+                const completedDataHTML = session.status === 'completed' ? `
+                    <div><span class="text-gray-600">% หลัง:</span><div class="font-semibold">${session.kwhAfter || '-'}%</div></div>
+                    <div><span class="text-gray-600">หน่วย:</span><div class="font-semibold">${session.units || '-'}</div></div>
+                    <div><span class="text-gray-600">ค่าไฟ:</span><div class="font-semibold text-green-600">฿${session.electricityCost || '-'}</div></div>
                 ` : '';
 
-                sessionCard.innerHTML = `<div class="flex justify-between items-start mb-4"><div><h3 class="text-lg font-semibold text-gray-800">${session.licensePlate}</h3><p class="text-sm text-gray-600">เริ่มเมื่อ: ${session.startTime}</p><p class="text-sm text-green-600">เครื่องชาร์จ: ${session.chargerName}</p><p class="text-sm text-gray-500 font-medium">ผู้เริ่ม: ${session.startedBy || '-'}</p></div>${statusBadge}</div><div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm"><div><span class="text-gray-600">วันที่:</span><div class="font-semibold">${session.date}</div></div><div><span class="text-gray-600">เลขไมล์:</span><div class="font-semibold">${session.previousMileage} → ${session.currentMileage}</div></div><div><span class="text-gray-600">% ก่อน:</span><div class="font-semibold">${session.kwhBefore}%</div></div><div><span class="text-gray-600">ระยะเวลา:</span><div class="font-semibold">${session.duration || 'กำลังชาร์จ'}</div></div></div>${session.status === 'completed' ? `<div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm mt-3 pt-3 border-t"><div><span class="text-gray-600">% หลัง:</span><div class="font-semibold">${session.kwhAfter}%</div></div><div><span class="text-gray-600">หน่วย:</span><div class="font-semibold">${session.units}</div></div><div><span class="text-gray-600">ราคา/หน่วย:</span><div class="font-semibold">฿${session.pricePerUnit}</div></div><div><span class="text-gray-600">ค่าไฟ:</span><div class="font-semibold text-green-600">฿${session.electricityCost}</div></div></div>` : ''}${realTimeDataHTML}${actionButtons}`;
+                sessionCard.innerHTML = `
+                    <div class="flex justify-between items-start mb-4">
+                        <div>
+                            <h3 class="text-lg font-semibold text-gray-800">${session.licensePlate}</h3>
+                            <p class="text-sm text-gray-600">เริ่มเมื่อ: ${session.startTime}</p>
+                            <p class="text-sm text-green-600">เครื่องชาร์จ: ${session.chargerName}</p>
+                            <p class="text-sm text-gray-500 font-medium">ผู้เริ่ม: ${session.startedBy || '-'}</p>
+                        </div>
+                        ${statusBadge}
+                    </div>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm border-t pt-4 mt-4">
+                        <div><span class="text-gray-600">วันที่:</span><div class="font-semibold">${session.date}</div></div>
+                        <div><span class="text-gray-600">เลขไมล์:</span><div class="font-semibold">${session.previousMileage} → ${session.currentMileage}</div></div>
+                        <div><span class="text-gray-600">% ก่อน:</span><div class="font-semibold">${session.kwhBefore}%</div></div>
+                        ${session.status === 'charging' ? '' : `<div><span class="text-gray-600">ระยะเวลา:</span><div class="font-semibold">${session.duration || '-'} นาที</div></div>`}
+                    </div>
+                    ${session.status === 'charging' ? `<div class="grid grid-cols-3 gap-4 text-center border-t pt-4 mt-4">${realTimeDataHTML}</div>` : ''}
+                    ${session.status === 'completed' ? `<div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm mt-3 pt-3 border-t">${completedDataHTML}</div>` : ''}
+                    ${actionButtons}`;
                 container.appendChild(sessionCard);
 
                 if (session.status === 'charging') {
@@ -1254,6 +1295,55 @@
                 if (result.isConfirmed) {
                     window.location.reload();
                 }
+            });
+        }
+
+        window.showRealtimeInfo = function(type) {
+            let title = '';
+            let htmlContent = '';
+
+            switch (type) {
+                case 'unit':
+                    title = '<strong>⚡ สูตรคำนวณหน่วย (kWh)</strong>';
+                    htmlContent = `
+                        <div class="text-left p-4 space-y-2">
+                            <p class="text-sm text-gray-700">คำนวณจากเวลาที่ใช้ในการชาร์จแบบเรียลไทม์:</p>
+                            <code class="block bg-gray-100 p-2 rounded mt-1 text-sm">หน่วย = (เวลาที่ผ่านไป(นาที) × 16) / 60</code>
+                        </div>
+                    `;
+                    break;
+                case 'cost':
+                    title = '<strong>💰 สูตรคำนวณค่าไฟ (บาท)</strong>';
+                    htmlContent = `
+                        <div class="text-left p-4 space-y-2">
+                            <p class="text-sm text-gray-700">คำนวณจากหน่วยไฟฟ้าและราคาต่อหน่วย ณ เวลาที่เริ่มชาร์จ:</p>
+                            <code class="block bg-gray-100 p-2 rounded mt-1 text-sm">ค่าไฟ = หน่วยไฟฟ้า × ราคาต่อหน่วย</code>
+                            <h4 class="font-semibold text-md text-yellow-600 pt-2">ราคาต่อหน่วย</h4>
+                            <ul class="list-disc list-inside text-sm space-y-1">
+                                <li><span class="text-red-500 font-semibold">Peak:</span> 4.1839 บาท (12:00-13:00, 17:00-17:30)</li>
+                                <li><span class="text-green-500 font-semibold">Off-Peak:</span> 2.6037 บาท (00:00-01:00, 05:00-05:30)</li>
+                                <li><span class="text-yellow-500 font-semibold">Normal:</span> 3.5000 บาท (เวลาอื่นๆ)</li>
+                            </ul>
+                        </div>
+                    `;
+                    break;
+                case 'time':
+                    title = '<strong>⏱️ สูตรคำนวณเวลาที่เหลือ</strong>';
+                    htmlContent = `
+                        <div class="text-left p-4 space-y-2">
+                            <p class="text-sm text-gray-700">คำนวณจากเปอร์เซ็นต์ที่ต้องชาร์จเพิ่มจนเต็ม 100% โดยอิงจากอัตรา 1.45 นาทีต่อ 1%:</p>
+                            <code class="block bg-gray-100 p-2 rounded mt-1 text-sm">เวลาที่เหลือ (นาที) = (100 - %ปัจจุบัน) × 1.45</code>
+                        </div>
+                    `;
+                    break;
+            }
+
+            Swal.fire({
+                title: title,
+                html: htmlContent,
+                showCloseButton: true,
+                focusConfirm: false,
+                confirmButtonText: 'ปิด',
             });
         }
         
