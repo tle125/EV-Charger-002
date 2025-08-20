@@ -282,6 +282,18 @@
                     </div>
                 </div>
                 <div id="activeChargingSessions" class="space-y-4"></div>
+
+                <!-- Today's Charging Card -->
+                <div class="bg-white rounded-2xl shadow-xl p-4 sm:p-6 mb-8">
+                    <div class="flex items-center justify-between mb-2">
+                        <h2 class="text-xl sm:text-2xl font-bold text-gray-800">📅 การชาร์จวันนี้ (1 วันล่าสุด)</h2>
+                        <span id="todayDateLabel" class="text-sm text-gray-500"></span>
+                    </div>
+                    <div id="todayChargingCard" class="text-sm text-gray-700">
+                        <div class="text-gray-500 py-6 text-center">กำลังโหลดข้อมูลวันนี้...</div>
+                    </div>
+                </div>
+    
             </div>
 
             <!-- Vehicle Status Overview -->
@@ -671,7 +683,89 @@
             setInterval(updatePricePerUnitDisplay, 60000);
         }
 
-        function setupRealtimeListeners() {
+        
+        function renderTodayChargingCard(records) {
+            const container = document.getElementById('todayChargingCard');
+            const dateLabel = document.getElementById('todayDateLabel');
+            if (!container) return;
+
+            const now = new Date();
+            const yyyy = now.getFullYear();
+            const mm = String(now.getMonth()+1).padStart(2,'0');
+            const dd = String(now.getDate()).padStart(2,'0');
+            const todayStr = `${yyyy}-${mm}-${dd}`;
+            dateLabel.textContent = new Date(`${todayStr}T00:00:00`).toLocaleDateString('th-TH', {weekday:'long', day:'2-digit', month:'long', year:'numeric'});
+
+            // filter records for today only (based on 'date' field captured at start of session)
+            const todayRecs = (records || []).filter(r => r.date === todayStr);
+
+            if (!todayRecs.length) {
+                container.innerHTML = `<div class="text-center text-gray-500 py-6">ไม่มีข้อมูลการชาร์จของวันนี้</div>`;
+                return;
+            }
+
+            // totals
+            let totalSessions = 0, totalUnits = 0, totalCost = 0;
+            todayRecs.forEach(r => {
+                totalSessions++;
+                totalUnits += parseFloat(r.units || 0);
+                totalCost  += parseFloat(r.electricityCost || 0);
+            });
+
+            // sort latest first by recordedAt or startedAt
+            todayRecs.sort((a,b)=> new Date(b.recordedAt || b.startedAt || b.endTime || b.date) - new Date(a.recordedAt || a.startedAt || a.endTime || a.date));
+            const topRows = todayRecs.slice(0, 6);
+
+            container.innerHTML = `
+              <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
+                <div class="rounded-xl p-4 bg-gradient-to-r from-sky-500 to-sky-600 text-white shadow">
+                  <div class="flex items-center justify-between"><div class="text-sm opacity-90">จำนวนครั้ง</div><div class="text-2xl">🔌</div></div>
+                  <div class="text-3xl font-bold mt-1">${totalSessions.toLocaleString()}</div>
+                </div>
+                <div class="rounded-xl p-4 bg-gradient-to-r from-indigo-500 to-indigo-600 text-white shadow">
+                  <div class="flex items-center justify-between"><div class="text-sm opacity-90">หน่วยรวม (kWh)</div><div class="text-2xl">⚡</div></div>
+                  <div class="text-3xl font-bold mt-1">${totalUnits.toFixed(2)}</div>
+                </div>
+                <div class="rounded-xl p-4 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white shadow">
+                  <div class="flex items-center justify-between"><div class="text-sm opacity-90">ค่าไฟรวม (฿)</div><div class="text-2xl">💰</div></div>
+                  <div class="text-3xl font-bold mt-1">฿${totalCost.toFixed(2)}</div>
+                </div>
+              </div>
+
+              <div class="overflow-x-auto">
+                <table class="min-w-full text-sm">
+                  <thead>
+                    <tr class="bg-gray-50 text-gray-600">
+                      <th class="px-3 py-2 text-left">เวลา</th>
+                      <th class="px-3 py-2 text-left">ทะเบียน</th>
+                      <th class="px-3 py-2 text-left">แท่น</th>
+                      <th class="px-3 py-2 text-right">หน่วย (kWh)</th>
+                      <th class="px-3 py-2 text-right">ค่าไฟ (฿)</th>
+                    </tr>
+                  </thead>
+                  <tbody id="todayRows"></tbody>
+                </table>
+              </div>
+            `;
+
+            const tbody = container.querySelector('#todayRows');
+            topRows.forEach(r => {
+              const start = r.startTime || (r.startedAt ? new Date(r.startedAt).toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit'}) : '-');
+              const end   = r.endTime   || (r.recordedAt ? new Date(r.recordedAt).toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit'}) : '');
+              const time  = end ? `${start}–${end}` : start;
+              const tr = document.createElement('tr');
+              tr.className = 'border-b last:border-0 hover:bg-gray-50';
+              tr.innerHTML = `
+                <td class="px-3 py-2">${time}</td>
+                <td class="px-3 py-2 font-medium">${r.licensePlate || '-'}</td>
+                <td class="px-3 py-2">${r.chargerName || '-'}</td>
+                <td class="px-3 py-2 text-right">${parseFloat(r.units||0).toFixed(2)}</td>
+                <td class="px-3 py-2 text-right">฿${parseFloat(r.electricityCost||0).toFixed(2)}</td>
+              `;
+              tbody.appendChild(tr);
+            });
+        }
+    function setupRealtimeListeners() {
             if (!db || !firebaseUserId) return;
 
             const stateDocRef = doc(db, `artifacts/${appId}/state/main`);
@@ -703,6 +797,7 @@
                 });
                 allHistoryRecords.sort((a, b) => new Date(b.date) - new Date(a.date));
                 displayChargingHistory(allHistoryRecords);
+                renderTodayChargingCard(allHistoryRecords);
                 loadSummaryData();
             });
         }
