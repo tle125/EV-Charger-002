@@ -76,6 +76,13 @@
             0%, 100% { transform: translate(-50%, -50%) scale(1); }
             50% { transform: translate(-50%, -50%) scale(1.2); }
         }
+        .charging-icon-pulse {
+            animation: icon-pulse 1.5s infinite ease-in-out;
+        }
+        @keyframes icon-pulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.2); opacity: 0.7; }
+        }
     </style>
 </head>
 <body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen">
@@ -167,14 +174,6 @@
                         </svg>
                         <span>ออกจากระบบ</span>
                     </button>
-        <button id="formula-info-btn" onclick="window.showFormulaInfo()"
-                class="ml-2 flex items-center px-2 py-1 rounded-md text-blue-600 hover:text-blue-800 hover:bg-blue-50 border border-blue-200"
-                title="สูตรคำนวณ">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 2a10 10 0 100 20 10 10 0 000-20zm.75 15h-1.5v-6h1.5v6zm0-8h-1.5V7h1.5v2z"/>
-            </svg>
-        </button>
-        
                 </div>
             </div>
         </div>
@@ -467,79 +466,7 @@
             }
         }
 
-        
-// --- DAILY ROUND REMINDERS (11:50, 16:50, 23:50) ---
-const ROUND_TIMES = ['11:50', '16:50', '23:50'];
-
-function startDailyRoundReminders() {
-  try {
-    // run immediately and then every 30 seconds
-    checkRoundTimes();
-    if (window.__roundReminderTimer) clearInterval(window.__roundReminderTimer);
-    window.__roundReminderTimer = setInterval(checkRoundTimes, 30 * 1000);
-    console.log('Round reminders active for times:', ROUND_TIMES.join(', '));
-  } catch (e) {
-    console.error('startDailyRoundReminders error:', e);
-  }
-}
-
-function checkRoundTimes() {
-  const now = new Date();
-  const y = now.getFullYear();
-  const m = String(now.getMonth()+1).padStart(2, '0');
-  const d = String(now.getDate()).padStart(2, '0');
-  const todayKey = `${y}${m}${d}`;
-
-  ROUND_TIMES.forEach(t => {
-    const [hh, mm] = t.split(':').map(Number);
-    const target = new Date(now);
-    target.setHours(hh, mm, 0, 0);
-
-    // Fire once when we're within this 60s window and not already reminded
-    const diff = now - target; // ms
-    const alreadyKey = `reminded-${todayKey}-${hh}${String(mm).padStart(2,'0')}`;
-
-    if (diff >= 0 && diff < 60 * 1000) {
-      if (localStorage.getItem(alreadyKey) !== '1') {
-        showRoundReminderNotification(t);
-        localStorage.setItem(alreadyKey, '1');
-      }
-    }
-    // New day reset occurs naturally due to date-based key
-  });
-}
-
-function showRoundReminderNotification(timeStr, leadMinutes = 0) {
-  const title = 'ถึงรอบเวลาชาร์จ';
-  const body = leadMinutes > 0 ? `อีก ${leadMinutes} นาทีจะถึงรอบ ${timeStr} น.` : `เตือนรอบเวลา ${timeStr} น.`;
-
-  if (navigator.serviceWorker) {
-    navigator.serviceWorker.getRegistration().then(reg => {
-      if (reg && Notification.permission === 'granted') {
-        reg.showNotification(title, {
-          body,
-          icon: './icon-192.png',
-          badge: './icon-192.png',
-          tag: `round-${timeStr.replace(':','')}`,
-          renotify: true
-        });
-      }
-    });
-  }
-  if ('Notification' in window && Notification.permission === 'granted') {
-    try { new Notification(title, { body, icon: './icon-192.png' }); } catch {}
-  }
-  if (navigator.vibrate) navigator.vibrate([150, 80, 150]);
-  try {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const o = ctx.createOscillator(); const g = ctx.createGain();
-    o.type = 'sine'; o.frequency.value = 740; o.connect(g); g.connect(ctx.destination);
-    g.gain.setValueAtTime(0.0001, ctx.currentTime);
-    g.gain.exponentialRampToValueAtTime(0.18, ctx.currentTime + 0.02);
-    o.start(); setTimeout(()=>{ g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.05); o.stop(); ctx.close(); }, 450);
-  } catch (e) { console.debug('Reminder beep failed:', e); }
-}
-async function setupLoginScreen() {
+        async function setupLoginScreen() {
             const usersColRef = collection(db, `artifacts/${appId}/users`);
             const userSnapshot = await getDocs(usersColRef);
             const userSelect = document.getElementById('login-user');
@@ -665,7 +592,6 @@ async function setupLoginScreen() {
                 setupRealtimeListeners();
                 initializeUI();
                 requestNotificationPermission();
-                startDailyRoundReminders();
 
                 if (currentUser.role === 'employee') {
                     prepopulateForm(currentUser.vehicle, currentUser.charger);
@@ -834,13 +760,29 @@ async function setupLoginScreen() {
                 const card = document.createElement('div');
                 let statusColor = '', statusText = '', statusIcon = '';
                 switch(status.status) {
-                    case 'available': statusColor = 'border-green-200 bg-green-50'; statusText = 'พร้อมใช้งาน'; statusIcon = '✅'; break;
-                    case 'charging': statusColor = 'border-yellow-200 bg-yellow-50'; statusText = 'กำลังชาร์จ'; statusIcon = '🔋'; break;
-                    case 'completed': statusColor = 'border-blue-200 bg-blue-50'; statusText = 'พร้อมบันทึก'; statusIcon = '⏹️'; break;
-                    case 'out-of-service': statusColor = 'border-red-200 bg-red-50'; statusText = 'ไม่พร้อมใช้งาน'; statusIcon = '❌'; break;
+                    case 'available': 
+                        statusColor = 'border-green-200 bg-green-50'; 
+                        statusText = 'พร้อมใช้งาน'; 
+                        statusIcon = '✅'; 
+                        break;
+                    case 'charging': 
+                        statusColor = 'border-yellow-300 bg-yellow-100'; 
+                        statusText = 'กำลังชาร์จ'; 
+                        statusIcon = `<svg class="w-8 h-8 mx-auto text-yellow-500 charging-icon-pulse" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M11 21V12.9H9L13 3V11.1H15L11 21Z"></path></svg>`;
+                        break;
+                    case 'completed': 
+                        statusColor = 'border-blue-200 bg-blue-50'; 
+                        statusText = 'พร้อมบันทึก'; 
+                        statusIcon = '⏹️'; 
+                        break;
+                    case 'out-of-service': 
+                        statusColor = 'border-red-200 bg-red-50'; 
+                        statusText = 'ไม่พร้อมใช้งาน'; 
+                        statusIcon = '❌'; 
+                        break;
                 }
-                card.className = `p-2 sm:p-4 border rounded-lg text-center flex flex-col justify-between`;
-                let cardHTML = `<div><div class="text-xl sm:text-2xl mb-2">${statusIcon}</div><div class="font-semibold text-sm sm:text-base text-gray-800">${vehicle}</div><div class="text-xs sm:text-sm text-gray-600">${statusText}</div>${status.lastMileage ? `<div class="text-xs text-gray-500 mt-1">ไมล์: ${status.lastMileage}</div>` : ''}</div>`;
+                card.className = `p-2 sm:p-4 border rounded-lg text-center flex flex-col justify-between ${statusColor}`;
+                let cardHTML = `<div><div class="h-8 flex items-center justify-center mb-2">${statusIcon}</div><div class="font-semibold text-sm sm:text-base text-gray-800">${vehicle}</div><div class="text-xs sm:text-sm text-gray-600">${statusText}</div>${status.lastMileage ? `<div class="text-xs text-gray-500 mt-1">ไมล์: ${status.lastMileage}</div>` : ''}</div>`;
                 
                 if (currentUser && currentUser.role === 'supervisor') {
                     const isOutOfService = status.status === 'out-of-service';
@@ -1507,7 +1449,7 @@ async function setupLoginScreen() {
             vehicleFilter.innerHTML = '<option value="">ทุกคัน</option>';
             vehicles.forEach(v => vehicleFilter.innerHTML += `<option value="${v}">${v}</option>`);
             
-            const monthFilter = document.getElementById('summaryMonthFilter');
+            const monthFilter = document.getElementById('historyMonthFilter');
             monthFilter.innerHTML = '<option value="">ทุกเดือน</option>';
             const currentDate = new Date();
             for (let i = 0; i < 12; i++) {
@@ -1790,53 +1732,5 @@ async function setupLoginScreen() {
             return timeString ? timeString.slice(0, 5) : '-';
         }
     </script>
-
-<script>
-(function(){
-  function ensureFormulaButtonHook(){
-    var btn = document.getElementById('formula-info-btn');
-    if (!btn) return;
-    if (!btn.__bound) {
-      btn.addEventListener('click', function(e){
-        e.preventDefault();
-        e.stopPropagation();
-        if (typeof window.showFormulaInfo === 'function') {
-          window.showFormulaInfo();
-        } else {
-          // Fallback basic modal
-          var wrap = document.createElement('div');
-          wrap.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:99999';
-          var box = document.createElement('div');
-          box.style.cssText='background:#fff;max-width:760px;width:90%;padding:16px;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.2);';
-          box.innerHTML = '<h3 style="margin:0 0 8px;font-weight:700">สูตรคำนวณ</h3>' +
-            '<div style="max-height:60vh;overflow:auto;font-size:14px;line-height:1.6">' +
-            '<ol style="padding-left:18px">' +
-            '<li><b>ราคาต่อหน่วย</b> (Peak 12:00-13:00, 17:00-17:30 = 4.1839; Off-peak 00:00-01:00, 05:00-05:30 = 2.6037; อื่น ๆ = 3.5000)</li>' +
-            '<li><b>เวลาโดยรวม</b> = (100 − Start%) × 1.45 นาที</li>' +
-            '<li><b>% ปัจจุบัน</b> = min(100, Start% + ElapsedMin / 1.45)</li>' +
-            '<li><b>หน่วยที่ใช้</b> = (ElapsedMin × 16) / 60</li>' +
-            '<li><b>ค่าไฟ</b> = CurrentUnits × PricePerUnit</li>' +
-            '<li><b>เวลาเต็ม</b> = StartedAt + TotalDurationMinutes</li>' +
-            '<li><b>นับถอยหลัง</b> = TotalDurationMs − ElapsedMs</li>' +
-            '<li><b>แจ้งเตือนเต็ม</b> เมื่อ Current% ≥ 100</li>' +
-            '<li><b>เตือนรอบเวลา</b> ล่วงหน้า 5 นาที: 11:45, 16:45, 23:45</li>' +
-            '</ol></div>' +
-            '<div style="text-align:right;margin-top:12px"><button id="__closeInfo" style="padding:.5rem 1rem;border-radius:8px;background:#2563eb;color:#fff">ปิด</button></div>';
-          wrap.appendChild(box);
-          document.body.appendChild(wrap);
-          document.getElementById('__closeInfo').addEventListener('click', function(){ document.body.removeChild(wrap); });
-        }
-      }, {passive:false});
-      btn.__bound = true;
-    }
-  }
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', ensureFormulaButtonHook);
-  } else {
-    ensureFormulaButtonHook();
-  }
-})();
-</script>
-
 </body>
 </html>
