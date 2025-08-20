@@ -167,6 +167,13 @@
                             class="px-4 sm:px-6 py-2 rounded-lg font-medium transition duration-200 text-gray-600 hover:bg-gray-100 text-sm sm:text-base">
                         📊 สรุปการชาร์จ
                     </button>
+                    <button onclick="window.showAllCalculationInfo()" id="btn-info"
+                            class="flex items-center space-x-2 px-4 sm:px-6 py-2 rounded-lg font-medium transition duration-200 text-blue-500 hover:bg-blue-100 text-sm sm:text-base">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span>ข้อมูล</span>
+                    </button>
                     <button onclick="window.handleLogout()" id="logout-btn"
                             class="flex items-center space-x-2 px-4 sm:px-6 py-2 rounded-lg font-medium transition duration-200 text-red-500 hover:bg-red-100 text-sm sm:text-base">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
@@ -280,6 +287,14 @@
                     </div>
                 </div>
                 <div id="activeChargingSessions" class="space-y-4"></div>
+            </div>
+
+            <!-- Today's Charging Summary -->
+            <div class="bg-white rounded-2xl shadow-xl p-4 sm:p-6 mb-8">
+                <h2 class="text-xl sm:text-2xl font-bold text-gray-800 mb-4">สรุปการชาร์จประจำวัน</h2>
+                <div id="todaysChargingSummaryContainer" class="overflow-x-auto">
+                    <!-- Today's summary will be populated here -->
+                </div>
             </div>
 
             <!-- Vehicle Status Overview -->
@@ -712,6 +727,7 @@
                 });
                 allHistoryRecords.sort((a, b) => new Date(b.date) - new Date(a.date));
                 displayChargingHistory(allHistoryRecords);
+                displayTodaysHistory(allHistoryRecords);
                 loadSummaryData();
             });
         }
@@ -733,7 +749,7 @@
 
             vehicles.forEach(v => {
                 if (!currentVehicleStatuses[v]) {
-                    currentVehicleStatuses[v] = { status: 'available', lastMileage: 0, sessionId: null };
+                    currentVehicleStatuses[v] = { status: 'available', lastMileage: 0, sessionId: null, chargerName: null };
                     needsUpdate = true;
                     console.log(`Adding new vehicle '${v}' to state.`);
                 }
@@ -770,6 +786,12 @@
                 const status = vehicleStatuses[vehicle] || { status: 'available', lastMileage: 0 };
                 const card = document.createElement('div');
                 let statusColor = '', statusText = '', statusIcon = '';
+                let chargerInfo = '';
+
+                if (status.status === 'charging' && status.chargerName) {
+                    chargerInfo = `<div class="absolute top-1.5 right-1.5 bg-slate-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">${status.chargerName}</div>`;
+                }
+
                 switch(status.status) {
                     case 'available': 
                         statusColor = 'border-green-200 bg-green-50'; 
@@ -792,16 +814,19 @@
                         statusIcon = '❌'; 
                         break;
                 }
-                card.className = `p-2 sm:p-4 border rounded-lg text-center flex flex-col justify-between ${statusColor}`;
-                let cardHTML = `<div><div class="h-8 flex items-center justify-center mb-1">${statusIcon}</div><div class="font-semibold text-sm sm:text-base text-gray-800">${vehicle}</div><div class="text-xs sm:text-sm text-gray-600">${statusText}</div>${status.lastMileage ? `<div class="text-xs text-gray-500 mt-1">ไมล์: ${status.lastMileage}</div>` : ''}</div>`;
+                card.className = `relative p-2 sm:p-4 border rounded-lg text-center flex flex-col justify-between ${statusColor}`;
                 
+                let cardContent = `<div><div class="h-8 flex items-center justify-center mb-1">${statusIcon}</div><div class="font-semibold text-sm sm:text-base text-gray-800">${vehicle}</div><div class="text-xs sm:text-sm text-gray-600">${statusText}</div>${status.lastMileage ? `<div class="text-xs text-gray-500 mt-1">ไมล์: ${status.lastMileage}</div>` : ''}</div>`;
+                
+                let supervisorButton = '';
                 if (currentUser && currentUser.role === 'supervisor') {
                     const isOutOfService = status.status === 'out-of-service';
                     const buttonText = isOutOfService ? 'เปิดใช้งาน' : 'แจ้งเสีย';
                     const buttonColor = isOutOfService ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800';
-                    cardHTML += `<button onclick="window.toggleVehicleStatus('${vehicle}')" class="mt-2 text-xs font-semibold py-1 px-2 rounded-full ${buttonColor}">${buttonText}</button>`;
+                    supervisorButton = `<button onclick="window.toggleVehicleStatus('${vehicle}')" class="mt-2 text-xs font-semibold py-1 px-2 rounded-full ${buttonColor}">${buttonText}</button>`;
                 }
-                card.innerHTML = cardHTML;
+                
+                card.innerHTML = chargerInfo + cardContent + supervisorButton;
                 grid.appendChild(card);
             });
         }
@@ -922,30 +947,15 @@
                 
                 const realTimeDataHTML = session.status === 'charging' ? `
                     <div class="text-center">
-                        <div class="text-sm text-gray-500 flex items-center justify-center gap-1">
-                            <span>หน่วย</span>
-                            <button onclick="window.showRealtimeInfo('unit')" class="text-blue-400 hover:text-blue-600">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                            </button>
-                        </div>
+                        <div class="text-sm text-gray-500">หน่วย</div>
                         <div id="units-${session.sessionId}" class="font-bold text-2xl text-purple-600 mt-1">0.00</div>
                     </div>
                      <div class="text-center">
-                        <div class="text-sm text-gray-500 flex items-center justify-center gap-1">
-                            <span>ค่าไฟ</span>
-                            <button onclick="window.showRealtimeInfo('cost')" class="text-blue-400 hover:text-blue-600">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                            </button>
-                        </div>
+                        <div class="text-sm text-gray-500">ค่าไฟ</div>
                         <div id="cost-${session.sessionId}" class="font-bold text-2xl text-green-600 mt-1">฿0.00</div>
                     </div>
                     <div class="text-center">
-                        <div class="text-sm text-gray-500 flex items-center justify-center gap-1">
-                            <span>เวลาที่เหลือ</span>
-                            <button onclick="window.showRealtimeInfo('time')" class="text-blue-400 hover:text-blue-600">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                            </button>
-                        </div>
+                        <div class="text-sm text-gray-500">เวลาที่เหลือ</div>
                         <div id="countdown-${session.sessionId}" class="font-bold text-2xl text-red-600 mt-1">--:--:--</div>
                     </div>
                 ` : `
@@ -1107,6 +1117,7 @@
                     batch.update(stateDocRef, {
                         [`vehicleStatuses.${licensePlate}.status`]: 'charging',
                         [`vehicleStatuses.${licensePlate}.sessionId`]: sessionId,
+                        [`vehicleStatuses.${licensePlate}.chargerName`]: chargerName,
                         [`chargerStatuses.${chargerName}.status`]: 'in-use',
                         [`chargerStatuses.${chargerName}.sessionId`]: sessionId
                     });
@@ -1189,6 +1200,7 @@
                 batch.update(stateDocRef, {
                     [`vehicleStatuses.${session.licensePlate}.status`]: 'available',
                     [`vehicleStatuses.${session.licensePlate}.sessionId`]: null,
+                    [`vehicleStatuses.${session.licensePlate}.chargerName`]: null,
                     [`vehicleStatuses.${session.licensePlate}.lastMileage`]: session.currentMileage,
                     [`chargerStatuses.${session.chargerName}.status`]: 'available',
                     [`chargerStatuses.${session.chargerName}.sessionId`]: null,
@@ -1331,56 +1343,59 @@
                 }
             });
         }
-
-        window.showRealtimeInfo = function(type) {
-            let title = '';
-            let htmlContent = '';
-
-            switch (type) {
-                case 'unit':
-                    title = '<strong>⚡ สูตรคำนวณหน่วย (kWh)</strong>';
-                    htmlContent = `
-                        <div class="text-left p-4 space-y-2">
-                            <p class="text-sm text-gray-700">คำนวณจากเวลาที่ใช้ในการชาร์จแบบเรียลไทม์:</p>
-                            <code class="block bg-gray-100 p-2 rounded mt-1 text-sm">หน่วย = (เวลาที่ผ่านไป(นาที) × 16) / 60</code>
-                        </div>
-                    `;
-                    break;
-                case 'cost':
-                    title = '<strong>💰 สูตรคำนวณค่าไฟ (บาท)</strong>';
-                    htmlContent = `
-                        <div class="text-left p-4 space-y-2">
-                            <p class="text-sm text-gray-700">คำนวณจากหน่วยไฟฟ้าและราคาต่อหน่วย ณ เวลาที่เริ่มชาร์จ:</p>
-                            <code class="block bg-gray-100 p-2 rounded mt-1 text-sm">ค่าไฟ = หน่วยไฟฟ้า × ราคาต่อหน่วย</code>
-                            <h4 class="font-semibold text-md text-yellow-600 pt-2">ราคาต่อหน่วย</h4>
-                            <ul class="list-disc list-inside text-sm space-y-1">
+        
+        window.showAllCalculationInfo = function() {
+            Swal.fire({
+                title: '<strong>ℹ️ สรุปสูตรคำนวณทั้งหมด</strong>',
+                html: `
+                    <div class="text-left p-2 sm:p-4 space-y-4 max-h-[60vh] overflow-y-auto">
+                        
+                        <div>
+                            <h3 class="font-semibold text-lg text-yellow-600">1. การคำนวณราคาต่อหน่วย</h3>
+                            <p class="text-sm text-gray-700">ราคาจะขึ้นอยู่กับช่วงเวลาที่ <b>กดเริ่มชาร์จ</b>:</p>
+                            <ul class="list-disc list-inside text-sm space-y-1 mt-1">
                                 <li><span class="text-red-500 font-semibold">Peak:</span> 4.1839 บาท (12:00-13:00, 17:00-17:30)</li>
                                 <li><span class="text-green-500 font-semibold">Off-Peak:</span> 2.6037 บาท (00:00-01:00, 05:00-05:30)</li>
                                 <li><span class="text-yellow-500 font-semibold">Normal:</span> 3.5000 บาท (เวลาอื่นๆ)</li>
                             </ul>
                         </div>
-                    `;
-                    break;
-                case 'time':
-                    title = '<strong>⏱️ สูตรคำนวณเวลาที่เหลือ</strong>';
-                    htmlContent = `
-                        <div class="text-left p-4 space-y-2">
-                            <p class="text-sm text-gray-700">คำนวณจากเปอร์เซ็นต์ที่ต้องชาร์จเพิ่มจนเต็ม 100% โดยอิงจากอัตรา 1.45 นาทีต่อ 1%:</p>
-                            <code class="block bg-gray-100 p-2 rounded mt-1 text-sm">เวลาที่เหลือ (นาที) = (100 - %ปัจจุบัน) × 1.45</code>
-                        </div>
-                    `;
-                    break;
-            }
 
-            Swal.fire({
-                title: title,
-                html: htmlContent,
+                        <div>
+                            <h3 class="font-semibold text-lg text-blue-600">2. การคำนวณระหว่างชาร์จ (Real-time)</h3>
+                             <ul class="list-disc list-inside text-sm space-y-2 mt-1">
+                                <li><b>เปอร์เซ็นต์ปัจจุบัน:</b><br><code class="block bg-gray-100 p-2 rounded text-xs">%ก่อนชาร์จ + (เวลาที่ผ่านไป(นาที) / 1.45)</code></li>
+                                <li><b>หน่วยพลังงานที่ใช้ (kWh):</b><br><code class="block bg-gray-100 p-2 rounded text-xs">(เวลาที่ผ่านไป(นาที) × 16) / 60</code></li>
+                                <li><b>ค่าไฟแบบเรียลไทม์:</b><br><code class="block bg-gray-100 p-2 rounded text-xs">หน่วยพลังงานที่ใช้ × ราคาต่อหน่วย</code></li>
+                                <li><b>เวลาแบตเต็มโดยประมาณ:</b><br><code class="block bg-gray-100 p-2 rounded text-xs">เวลาเริ่มต้น + เวลาชาร์จรวมโดยประมาณ</code></li>
+                                <li><b>เวลานับถอยหลัง:</b><br><code class="block bg-gray-100 p-2 rounded text-xs">เวลาชาร์จรวมโดยประมาณ - เวลาที่ผ่านไป</code></li>
+                            </ul>
+                        </div>
+
+                        <div>
+                            <h3 class="font-semibold text-lg text-purple-600">3. การคำนวณเมื่อจบการชาร์จ</h3>
+                             <ul class="list-disc list-inside text-sm space-y-2 mt-1">
+                                <li><b>เวลาชาร์จรวม (นาที):</b><br><code class="block bg-gray-100 p-2 rounded text-xs">(%หลังชาร์จ - %ก่อนชาร์จ) × 1.45</code></li>
+                                <li><b>หน่วยพลังงานทั้งหมด:</b><br><code class="block bg-gray-100 p-2 rounded text-xs">(เวลาชาร์จรวม × 16) / 60</code></li>
+                                <li><b>ค่าไฟทั้งหมด:</b><br><code class="block bg-gray-100 p-2 rounded text-xs">หน่วยพลังงานทั้งหมด × ราคาต่อหน่วย</code></li>
+                            </ul>
+                        </div>
+
+                        <div>
+                            <h3 class="font-semibold text-lg text-green-600">4. การแจ้งเตือนผ่าน LINE</h3>
+                             <ul class="list-disc list-inside text-sm space-y-2 mt-1">
+                                <li><b>แจ้งเตือนชาร์จเต็ม:</b><br><span>ระบบจะส่งข้อความ "รถทะเบียน xxx ชาร์จพลังงานเต็ม 100% แล้ว" ทันทีที่การคำนวณเวลาสิ้นสุดลง</span></li>
+                                <li><b>แจ้งเตือนรอบเวลา:</b><br><span>ระบบจะส่งข้อความ "ถึงรอบกำหนดนำรถเข้าชาร์จไฟฟ้าแล้ว" ล่วงหน้า 15 นาที ในเวลา <b>11:45</b>, <b>16:45</b>, และ <b>23:45</b> ของทุกวัน</span></li>
+                            </ul>
+                        </div>
+
+                    </div>
+                `,
                 showCloseButton: true,
                 focusConfirm: false,
                 confirmButtonText: 'ปิด',
             });
         }
-        
+
         function initializeHistoryFilters() {
             const vehicleFilter = document.getElementById('historyVehicleFilter');
             vehicleFilter.innerHTML = '<option value="">ทุกคัน</option>';
@@ -1397,6 +1412,50 @@
             }
         }
         
+        function displayTodaysHistory(records) {
+            const container = document.getElementById('todaysChargingSummaryContainer');
+            const today = new Date();
+            const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
+            const todaysRecords = records.filter(r => r.date === todayStr);
+
+            if (todaysRecords.length === 0) {
+                container.innerHTML = `<div class="text-center text-gray-500 py-8">ยังไม่มีการชาร์จสำหรับวันนี้</div>`;
+                return;
+            }
+
+            let tableHTML = `
+                <table class="w-full text-sm text-left">
+                    <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+                        <tr>
+                            <th scope="col" class="px-4 py-3">ทะเบียนรถ</th>
+                            <th scope="col" class="px-4 py-3">เครื่องชาร์จ</th>
+                            <th scope="col" class="px-4 py-3">เวลา</th>
+                            <th scope="col" class="px-4 py-3">ระยะเวลา (นาที)</th>
+                            <th scope="col" class="px-4 py-3">ค่าไฟ (บาท)</th>
+                            <th scope="col" class="px-4 py-3">ผู้บันทึก</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            
+            todaysRecords.forEach(record => {
+                tableHTML += `
+                    <tr class="border-b">
+                        <td class="px-4 py-3 font-medium text-gray-900">${record.licensePlate}</td>
+                        <td class="px-4 py-3">${record.chargerName}</td>
+                        <td class="px-4 py-3">${record.startTime} - ${record.endTime}</td>
+                        <td class="px-4 py-3">${record.duration}</td>
+                        <td class="px-4 py-3 text-green-600 font-semibold">฿${record.electricityCost}</td>
+                        <td class="px-4 py-3">${record.recordedBy}</td>
+                    </tr>
+                `;
+            });
+
+            tableHTML += `</tbody></table>`;
+            container.innerHTML = tableHTML;
+        }
+
         function displayChargingHistory(records) {
             const container = document.getElementById('chargingHistoryContainer');
             const vehicleFilter = document.getElementById('historyVehicleFilter').value;
