@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="th">
 <head>
@@ -75,13 +76,6 @@
         @keyframes bolt-pulse {
             0%, 100% { transform: translate(-50%, -50%) scale(1); }
             50% { transform: translate(-50%, -50%) scale(1.2); }
-        }
-        .charging-icon-pulse {
-            animation: icon-pulse 1.5s infinite ease-in-out;
-        }
-        @keyframes icon-pulse {
-            0%, 100% { transform: scale(1); opacity: 1; }
-            50% { transform: scale(1.2); opacity: 0.7; }
         }
     </style>
 </head>
@@ -760,29 +754,19 @@
                 const card = document.createElement('div');
                 let statusColor = '', statusText = '', statusIcon = '';
                 switch(status.status) {
-                    case 'available': 
-                        statusColor = 'border-green-200 bg-green-50'; 
-                        statusText = 'พร้อมใช้งาน'; 
-                        statusIcon = '✅'; 
-                        break;
-                    case 'charging': 
-                        statusColor = 'border-yellow-300 bg-yellow-100'; 
-                        statusText = 'กำลังชาร์จ'; 
-                        statusIcon = `<svg class="w-8 h-8 mx-auto text-yellow-500 charging-icon-pulse" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M11 21V12.9H9L13 3V11.1H15L11 21Z"></path></svg>`;
-                        break;
-                    case 'completed': 
-                        statusColor = 'border-blue-200 bg-blue-50'; 
-                        statusText = 'พร้อมบันทึก'; 
-                        statusIcon = '⏹️'; 
-                        break;
-                    case 'out-of-service': 
-                        statusColor = 'border-red-200 bg-red-50'; 
-                        statusText = 'ไม่พร้อมใช้งาน'; 
-                        statusIcon = '❌'; 
-                        break;
+                    case 'available': statusColor = 'border-green-200 bg-green-50'; statusText = 'พร้อมใช้งาน'; statusIcon = '✅'; break;
+                    case 'charging': statusColor = 'border-yellow-400 bg-yellow-100'; statusText = 'กำลังชาร์จ'; statusIcon = `<span class="relative inline-flex items-center justify-center">
+                            <span class="absolute inline-flex h-5 w-5 rounded-full bg-yellow-400 opacity-75 animate-ping"></span>
+                            <svg class="w-5 h-5 text-yellow-600 relative animate-pulse" viewBox="0 0 24 24" fill="currentColor">
+                              <path d="M11 21V12.9H9L13 3V11.1H15L11 21Z"></path>
+                            </svg>
+                          </span>`; break;
+                    case 'completed': statusColor = 'border-blue-200 bg-blue-50'; statusText = 'พร้อมบันทึก'; statusIcon = '⏹️'; break;
+                    case 'out-of-service': statusColor = 'border-red-200 bg-red-50'; statusText = 'ไม่พร้อมใช้งาน'; statusIcon = '❌'; break;
                 }
-                card.className = `p-2 sm:p-4 border rounded-lg text-center flex flex-col justify-between ${statusColor}`;
-                let cardHTML = `<div><div class="h-8 flex items-center justify-center mb-2">${statusIcon}</div><div class="font-semibold text-sm sm:text-base text-gray-800">${vehicle}</div><div class="text-xs sm:text-sm text-gray-600">${statusText}</div>${status.lastMileage ? `<div class="text-xs text-gray-500 mt-1">ไมล์: ${status.lastMileage}</div>` : ''}</div>`;
+                card.className = `p-2 sm:p-4 border rounded-lg text-center flex flex-col justify-between`;
+                if (status.status === 'charging') { card.className += ' bg-yellow-100 border-yellow-400'; }
+                let cardHTML = `<div><div class="text-xl sm:text-2xl mb-2">${statusIcon}</div><div class="font-semibold text-sm sm:text-base text-gray-800">${vehicle}</div><div class="text-xs sm:text-sm text-gray-600">${statusText}</div>${status.lastMileage ? `<div class="text-xs text-gray-500 mt-1">ไมล์: ${status.lastMileage}</div>` : ''}</div>`;
                 
                 if (currentUser && currentUser.role === 'supervisor') {
                     const isOutOfService = status.status === 'out-of-service';
@@ -1449,7 +1433,7 @@
             vehicleFilter.innerHTML = '<option value="">ทุกคัน</option>';
             vehicles.forEach(v => vehicleFilter.innerHTML += `<option value="${v}">${v}</option>`);
             
-            const monthFilter = document.getElementById('historyMonthFilter');
+            const monthFilter = document.getElementById('summaryMonthFilter');
             monthFilter.innerHTML = '<option value="">ทุกเดือน</option>';
             const currentDate = new Date();
             for (let i = 0; i < 12; i++) {
