@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="th">
 <head>
@@ -76,6 +75,13 @@
         @keyframes bolt-pulse {
             0%, 100% { transform: translate(-50%, -50%) scale(1); }
             50% { transform: translate(-50%, -50%) scale(1.2); }
+        }
+        .charging-icon-pulse {
+            animation: icon-pulse 1.5s infinite ease-in-out;
+        }
+        @keyframes icon-pulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.2); opacity: 0.7; }
         }
     </style>
 </head>
@@ -168,14 +174,6 @@
                         </svg>
                         <span>ออกจากระบบ</span>
                     </button>
-        <button id="formula-info-btn" onclick="window.showFormulaInfo()"
-                class="ml-2 flex items-center px-2 py-1 rounded-md text-blue-600 hover:text-blue-800 hover:bg-blue-50 border border-blue-200"
-                title="สูตรคำนวณ">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 2a10 10 0 100 20 10 10 0 000-20zm.75 15h-1.5v-6h1.5v6zm0-8h-1.5V7h1.5v2z"/>
-            </svg>
-        </button>
-        
                 </div>
             </div>
         </div>
@@ -282,18 +280,6 @@
                     </div>
                 </div>
                 <div id="activeChargingSessions" class="space-y-4"></div>
-
-                <!-- Today's Charging Card -->
-                <div class="bg-white rounded-2xl shadow-xl p-4 sm:p-6 mb-8">
-                    <div class="flex items-center justify-between mb-2">
-                        <h2 class="text-xl sm:text-2xl font-bold text-gray-800">📅 การชาร์จวันนี้ (1 วันล่าสุด)</h2>
-                        <span id="todayDateLabel" class="text-sm text-gray-500"></span>
-                    </div>
-                    <div id="todayChargingCard" class="text-sm text-gray-700">
-                        <div class="text-gray-500 py-6 text-center">กำลังโหลดข้อมูลวันนี้...</div>
-                    </div>
-                </div>
-    
             </div>
 
             <!-- Vehicle Status Overview -->
@@ -505,6 +491,7 @@
             userSelect.addEventListener('change', () => {
                 const selectedUserId = userSelect.value;
                 const selectedUser = allUsers[selectedUserId];
+                // Only hide for regular supervisor
                 if (selectedUser && selectedUser.role === 'supervisor') {
                     vehicleWrapper.style.display = 'none';
                     chargerWrapper.style.display = 'none';
@@ -560,9 +547,10 @@
                     role: selectedUser.role || 'employee'
                 };
 
-                if (currentUser.role === 'employee') {
+                // Combine employee and special_supervisor logic for vehicle/charger selection
+                if (currentUser.role === 'employee' || currentUser.role === 'special_supervisor') {
                     if (!vehicle || !charger) {
-                        throw new Error('พนักงานต้องเลือกรถและเครื่องชาร์จ');
+                        throw new Error('พนักงานและผู้มีสิทธิ์พิเศษต้องเลือกรถและเครื่องชาร์จ');
                     }
                     
                     const vehicleStatus = vehicleStatuses[vehicle];
@@ -582,7 +570,9 @@
                         const activeSessionRef = doc(db, `artifacts/${appId}/active_sessions`, vehicleStatus.sessionId);
                         const activeSessionSnap = await getDoc(activeSessionRef);
                         if (!activeSessionSnap.exists() || activeSessionSnap.data().startedBy !== currentUser.name) {
-                            throw new Error(`ทะเบียนรถ ${vehicle} กำลังใช้งานโดยผู้ใช้อื่น`);
+                            if (currentUser.role !== 'special_supervisor') {
+                                throw new Error(`ทะเบียนรถ ${vehicle} กำลังใช้งานโดยผู้ใช้อื่น`);
+                            }
                         }
                     }
                     
@@ -593,7 +583,9 @@
                          const activeSessionRef = doc(db, `artifacts/${appId}/active_sessions`, chargerStatus.sessionId);
                         const activeSessionSnap = await getDoc(activeSessionRef);
                          if (!activeSessionSnap.exists() || activeSessionSnap.data().startedBy !== currentUser.name) {
-                            throw new Error(`เครื่องชาร์จ ${charger} กำลังใช้งานโดยผู้ใช้อื่น`);
+                            if (currentUser.role !== 'special_supervisor') {
+                                throw new Error(`เครื่องชาร์จ ${charger} กำลังใช้งานโดยผู้ใช้อื่น`);
+                            }
                         }
                     }
                     currentUser.vehicle = vehicle;
@@ -607,9 +599,11 @@
                 initializeUI();
                 requestNotificationPermission();
 
-                if (currentUser.role === 'employee') {
+                // Show/hide form based on role
+                if (currentUser.role === 'employee' || currentUser.role === 'special_supervisor') {
+                    document.getElementById('new-charging-wrapper').style.display = 'block';
                     prepopulateForm(currentUser.vehicle, currentUser.charger);
-                } else {
+                } else if (currentUser.role === 'supervisor') {
                     document.getElementById('new-charging-wrapper').style.display = 'none';
                 }
 
@@ -625,11 +619,14 @@
             window.selectLicensePlate(vehicle);
             window.selectCharger(charger);
 
-            document.querySelectorAll('#licensePlateButtons button, #chargerButtons button').forEach(btn => {
-                btn.disabled = true;
-                btn.classList.add('opacity-50', 'cursor-not-allowed');
-                btn.onclick = null;
-            });
+            // For special_supervisor, keep buttons enabled
+            if (currentUser.role === 'employee') {
+                document.querySelectorAll('#licensePlateButtons button, #chargerButtons button').forEach(btn => {
+                    btn.disabled = true;
+                    btn.classList.add('opacity-50', 'cursor-not-allowed');
+                    btn.onclick = null;
+                });
+            }
         }
 
         async function seedInitialUsers() {
@@ -683,89 +680,7 @@
             setInterval(updatePricePerUnitDisplay, 60000);
         }
 
-        
-        function renderTodayChargingCard(records) {
-            const container = document.getElementById('todayChargingCard');
-            const dateLabel = document.getElementById('todayDateLabel');
-            if (!container) return;
-
-            const now = new Date();
-            const yyyy = now.getFullYear();
-            const mm = String(now.getMonth()+1).padStart(2,'0');
-            const dd = String(now.getDate()).padStart(2,'0');
-            const todayStr = `${yyyy}-${mm}-${dd}`;
-            dateLabel.textContent = new Date(`${todayStr}T00:00:00`).toLocaleDateString('th-TH', {weekday:'long', day:'2-digit', month:'long', year:'numeric'});
-
-            // filter records for today only (based on 'date' field captured at start of session)
-            const todayRecs = (records || []).filter(r => r.date === todayStr);
-
-            if (!todayRecs.length) {
-                container.innerHTML = `<div class="text-center text-gray-500 py-6">ไม่มีข้อมูลการชาร์จของวันนี้</div>`;
-                return;
-            }
-
-            // totals
-            let totalSessions = 0, totalUnits = 0, totalCost = 0;
-            todayRecs.forEach(r => {
-                totalSessions++;
-                totalUnits += parseFloat(r.units || 0);
-                totalCost  += parseFloat(r.electricityCost || 0);
-            });
-
-            // sort latest first by recordedAt or startedAt
-            todayRecs.sort((a,b)=> new Date(b.recordedAt || b.startedAt || b.endTime || b.date) - new Date(a.recordedAt || a.startedAt || a.endTime || a.date));
-            const topRows = todayRecs.slice(0, 6);
-
-            container.innerHTML = `
-              <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
-                <div class="rounded-xl p-4 bg-gradient-to-r from-sky-500 to-sky-600 text-white shadow">
-                  <div class="flex items-center justify-between"><div class="text-sm opacity-90">จำนวนครั้ง</div><div class="text-2xl">🔌</div></div>
-                  <div class="text-3xl font-bold mt-1">${totalSessions.toLocaleString()}</div>
-                </div>
-                <div class="rounded-xl p-4 bg-gradient-to-r from-indigo-500 to-indigo-600 text-white shadow">
-                  <div class="flex items-center justify-between"><div class="text-sm opacity-90">หน่วยรวม (kWh)</div><div class="text-2xl">⚡</div></div>
-                  <div class="text-3xl font-bold mt-1">${totalUnits.toFixed(2)}</div>
-                </div>
-                <div class="rounded-xl p-4 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white shadow">
-                  <div class="flex items-center justify-between"><div class="text-sm opacity-90">ค่าไฟรวม (฿)</div><div class="text-2xl">💰</div></div>
-                  <div class="text-3xl font-bold mt-1">฿${totalCost.toFixed(2)}</div>
-                </div>
-              </div>
-
-              <div class="overflow-x-auto">
-                <table class="min-w-full text-sm">
-                  <thead>
-                    <tr class="bg-gray-50 text-gray-600">
-                      <th class="px-3 py-2 text-left">เวลา</th>
-                      <th class="px-3 py-2 text-left">ทะเบียน</th>
-                      <th class="px-3 py-2 text-left">แท่น</th>
-                      <th class="px-3 py-2 text-right">หน่วย (kWh)</th>
-                      <th class="px-3 py-2 text-right">ค่าไฟ (฿)</th>
-                    </tr>
-                  </thead>
-                  <tbody id="todayRows"></tbody>
-                </table>
-              </div>
-            `;
-
-            const tbody = container.querySelector('#todayRows');
-            topRows.forEach(r => {
-              const start = r.startTime || (r.startedAt ? new Date(r.startedAt).toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit'}) : '-');
-              const end   = r.endTime   || (r.recordedAt ? new Date(r.recordedAt).toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit'}) : '');
-              const time  = end ? `${start}–${end}` : start;
-              const tr = document.createElement('tr');
-              tr.className = 'border-b last:border-0 hover:bg-gray-50';
-              tr.innerHTML = `
-                <td class="px-3 py-2">${time}</td>
-                <td class="px-3 py-2 font-medium">${r.licensePlate || '-'}</td>
-                <td class="px-3 py-2">${r.chargerName || '-'}</td>
-                <td class="px-3 py-2 text-right">${parseFloat(r.units||0).toFixed(2)}</td>
-                <td class="px-3 py-2 text-right">฿${parseFloat(r.electricityCost||0).toFixed(2)}</td>
-              `;
-              tbody.appendChild(tr);
-            });
-        }
-    function setupRealtimeListeners() {
+        function setupRealtimeListeners() {
             if (!db || !firebaseUserId) return;
 
             const stateDocRef = doc(db, `artifacts/${appId}/state/main`);
@@ -797,7 +712,6 @@
                 });
                 allHistoryRecords.sort((a, b) => new Date(b.date) - new Date(a.date));
                 displayChargingHistory(allHistoryRecords);
-                renderTodayChargingCard(allHistoryRecords);
                 loadSummaryData();
             });
         }
@@ -857,19 +771,29 @@
                 const card = document.createElement('div');
                 let statusColor = '', statusText = '', statusIcon = '';
                 switch(status.status) {
-                    case 'available': statusColor = 'border-green-200 bg-green-50'; statusText = 'พร้อมใช้งาน'; statusIcon = '✅'; break;
-                    case 'charging': statusColor = 'border-yellow-400 bg-yellow-100'; statusText = 'กำลังชาร์จ'; statusIcon = `<span class="relative inline-flex items-center justify-center">
-                            <span class="absolute inline-flex h-5 w-5 rounded-full bg-yellow-400 opacity-75 animate-ping"></span>
-                            <svg class="w-5 h-5 text-yellow-600 relative animate-pulse" viewBox="0 0 24 24" fill="currentColor">
-                              <path d="M11 21V12.9H9L13 3V11.1H15L11 21Z"></path>
-                            </svg>
-                          </span>`; break;
-                    case 'completed': statusColor = 'border-blue-200 bg-blue-50'; statusText = 'พร้อมบันทึก'; statusIcon = '⏹️'; break;
-                    case 'out-of-service': statusColor = 'border-red-200 bg-red-50'; statusText = 'ไม่พร้อมใช้งาน'; statusIcon = '❌'; break;
+                    case 'available': 
+                        statusColor = 'border-green-200 bg-green-50'; 
+                        statusText = 'พร้อมใช้งาน'; 
+                        statusIcon = '✅'; 
+                        break;
+                    case 'charging': 
+                        statusColor = 'border-yellow-300 bg-yellow-100'; 
+                        statusText = 'กำลังชาร์จ'; 
+                        statusIcon = `<div class="text-3xl charging-icon-pulse">⚡</div>`;
+                        break;
+                    case 'completed': 
+                        statusColor = 'border-blue-200 bg-blue-50'; 
+                        statusText = 'พร้อมบันทึก'; 
+                        statusIcon = '⏹️'; 
+                        break;
+                    case 'out-of-service': 
+                        statusColor = 'border-red-200 bg-red-50'; 
+                        statusText = 'ไม่พร้อมใช้งาน'; 
+                        statusIcon = '❌'; 
+                        break;
                 }
-                card.className = `p-2 sm:p-4 border rounded-lg text-center flex flex-col justify-between`;
-                if (status.status === 'charging') { card.className += ' bg-yellow-100 border-yellow-400'; }
-                let cardHTML = `<div><div class="text-xl sm:text-2xl mb-2">${statusIcon}</div><div class="font-semibold text-sm sm:text-base text-gray-800">${vehicle}</div><div class="text-xs sm:text-sm text-gray-600">${statusText}</div>${status.lastMileage ? `<div class="text-xs text-gray-500 mt-1">ไมล์: ${status.lastMileage}</div>` : ''}</div>`;
+                card.className = `p-2 sm:p-4 border rounded-lg text-center flex flex-col justify-between ${statusColor}`;
+                let cardHTML = `<div><div class="h-8 flex items-center justify-center mb-1">${statusIcon}</div><div class="font-semibold text-sm sm:text-base text-gray-800">${vehicle}</div><div class="text-xs sm:text-sm text-gray-600">${statusText}</div>${status.lastMileage ? `<div class="text-xs text-gray-500 mt-1">ไมล์: ${status.lastMileage}</div>` : ''}</div>`;
                 
                 if (currentUser && currentUser.role === 'supervisor') {
                     const isOutOfService = status.status === 'out-of-service';
@@ -1355,7 +1279,7 @@
         function resetNewChargingForm() {
             document.getElementById('newChargingForm').reset();
             setTodayDate();
-            if (currentUser.role === 'employee') {
+            if (currentUser.role === 'employee' || currentUser.role === 'special_supervisor') {
                 prepopulateForm(currentUser.vehicle, currentUser.charger);
             }
         }
@@ -1819,100 +1743,5 @@
             return timeString ? timeString.slice(0, 5) : '-';
         }
     </script>
-
-<script>
-window.copyFormulaText = function(){
-  const el = document.getElementById('formulaContent');
-  if (!el) return;
-  const text = el.innerText.replace(/\n{3,}/g, '\n\n');
-  if (navigator.clipboard && navigator.clipboard.writeText) {
-    navigator.clipboard.writeText(text).then(()=>{
-      if (typeof Swal !== 'undefined') Swal.fire({icon:'success', title:'คัดลอกแล้ว', timer:1200, showConfirmButton:false});
-    });
-  } else {
-    // Fallback
-    const ta = document.createElement('textarea');
-    ta.value = text;
-    document.body.appendChild(ta);
-    ta.select();
-    try { document.execCommand('copy'); } catch(e){}
-    document.body.removeChild(ta);
-  }
-};
-
-window.showFormulaInfo = function() {
-  const html = `
-  <div id="formulaContent" class="text-left text-sm leading-6">
-    <h3 class="font-semibold text-gray-800 mb-2">สรุปสูตรคำนวณในระบบ</h3>
-
-    <details open class="mb-2">
-      <summary class="font-medium">1) สมมติฐาน (Parameters)</summary>
-      <ul class="list-disc pl-6">
-        <li><code>CHARGE_RATE_MIN_PER_PERCENT = 1.45</code> นาที ต่อ 1%</li>
-        <li><code>ENERGY_RATE_KWH_PER_HOUR = 16</code> หน่วย/ชั่วโมง</li>
-      </ul>
-    </details>
-
-    <details open class="mb-2">
-      <summary class="font-medium">2) ราคาต่อหน่วยไฟฟ้า (getPricePerUnit)</summary>
-      <div class="pl-6">
-        <div><code>Peak</code> : 12:00–13:00 และ 17:00–17:30 = <b>4.1839</b> บาท/หน่วย</div>
-        <div><code>Off-peak</code> : 00:00–01:00 และ 05:00–05:30 = <b>2.6037</b> บาท/หน่วย</div>
-        <div><code>Normal</code> : ช่วงอื่น ๆ = <b>3.5000</b> บาท/หน่วย</div>
-      </div>
-    </details>
-
-    <details open class="mb-2">
-      <summary class="font-medium">3) เวลาโดยรวม/เวลาเต็ม</summary>
-      <ul class="list-disc pl-6">
-        <li><code>TotalDurationMinutes = (100 − StartPercent) × 1.45</code></li>
-        <li><code>TotalDurationMs = TotalDurationMinutes × 60 × 1000</code></li>
-        <li><code>FullTime = StartedAt + TotalDurationMs</code></li>
-      </ul>
-    </details>
-
-    <details open class="mb-2">
-      <summary class="font-medium">4) เปอร์เซ็นต์ปัจจุบัน/นับถอยหลัง</summary>
-      <ul class="list-disc pl-6">
-        <li><code>PercentGained = ElapsedMinutes / 1.45</code></li>
-        <li><code>CurrentPercent = min(100, StartPercent + PercentGained)</code></li>
-        <li><code>RemainingMs = TotalDurationMs − ElapsedMs</code></li>
-      </ul>
-    </details>
-
-    <details open class="mb-2">
-      <summary class="font-medium">5) หน่วย (kWh) และค่าไฟแบบเรียลไทม์</summary>
-      <ul class="list-disc pl-6">
-        <li>อัตราหน่วย/ชั่วโมงคงที่: <code>16</code> ⇒ <code>CurrentUnits = (ElapsedMinutes × 16) / 60</code></li>
-        <li><code>CurrentCost = CurrentUnits × PricePerUnit</code>, โดย <code>PricePerUnit = getPricePerUnit(StartTime)</code></li>
-      </ul>
-    </details>
-
-    <details open class="mb-2">
-      <summary class="font-medium">6) การแจ้งเตือน</summary>
-      <ul class="list-disc pl-6">
-        <li><b>ชาร์จเต็ม 100%</b>: เมื่อ <code>CurrentPercent ≥ 100</code> → แจ้งเตือน + สั่น + เสียง</li>
-        <li><b>เตือนรอบเวลา (ล่วงหน้า 5 นาที)</b>: <code>11:45</code>, <code>16:45</code>, <code>23:45</code></li>
-      </ul>
-    </details>
-  </div>`;
-
-  if (typeof Swal !== 'undefined' && Swal && Swal.fire) {
-    Swal.fire({
-      title: 'สูตรคำนวณ',
-      html,
-      width: 780,
-      showCancelButton: false,
-      confirmButtonText: 'ปิด',
-      showDenyButton: true,
-      denyButtonText: 'คัดลอกสูตร',
-    }).then((res)=>{ if(res.isDenied){ window.copyFormulaText(); } });
-  } else {
-    // Fallback
-    alert('สูตรคำนวณ:\\n(1) 1.45 นาทีต่อ 1% | 16 หน่วย/ชม.\\n(2) ราคา: Peak 4.1839 | Off-peak 2.6037 | ปกติ 3.5\\n(3) เวลา: (100−Start%)×1.45 และ FullTime=Started+Duration\\n(4) %ปัจจุบัน = Start% + Elapsed/1.45, นับถอยหลัง = Total−Elapsed\\n(5) หน่วย=(Elapsed×16)/60, ค่าไฟ=หน่วย×ราคา\\n(6) แจ้งเตือน 100% และเตือนรอบเวลา -5 นาที');
-  }
-};
-</script>
-
 </body>
 </html>
