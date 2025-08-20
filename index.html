@@ -168,6 +168,14 @@
                         </svg>
                         <span>ออกจากระบบ</span>
                     </button>
+        <button id="formula-info-btn" onclick="window.showFormulaInfo()"
+                class="ml-2 flex items-center px-2 py-1 rounded-md text-blue-600 hover:text-blue-800 hover:bg-blue-50 border border-blue-200"
+                title="สูตรคำนวณ">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 2a10 10 0 100 20 10 10 0 000-20zm.75 15h-1.5v-6h1.5v6zm0-8h-1.5V7h1.5v2z"/>
+            </svg>
+        </button>
+        
                 </div>
             </div>
         </div>
@@ -1716,5 +1724,100 @@
             return timeString ? timeString.slice(0, 5) : '-';
         }
     </script>
+
+<script>
+window.copyFormulaText = function(){
+  const el = document.getElementById('formulaContent');
+  if (!el) return;
+  const text = el.innerText.replace(/\n{3,}/g, '\n\n');
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(()=>{
+      if (typeof Swal !== 'undefined') Swal.fire({icon:'success', title:'คัดลอกแล้ว', timer:1200, showConfirmButton:false});
+    });
+  } else {
+    // Fallback
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); } catch(e){}
+    document.body.removeChild(ta);
+  }
+};
+
+window.showFormulaInfo = function() {
+  const html = `
+  <div id="formulaContent" class="text-left text-sm leading-6">
+    <h3 class="font-semibold text-gray-800 mb-2">สรุปสูตรคำนวณในระบบ</h3>
+
+    <details open class="mb-2">
+      <summary class="font-medium">1) สมมติฐาน (Parameters)</summary>
+      <ul class="list-disc pl-6">
+        <li><code>CHARGE_RATE_MIN_PER_PERCENT = 1.45</code> นาที ต่อ 1%</li>
+        <li><code>ENERGY_RATE_KWH_PER_HOUR = 16</code> หน่วย/ชั่วโมง</li>
+      </ul>
+    </details>
+
+    <details open class="mb-2">
+      <summary class="font-medium">2) ราคาต่อหน่วยไฟฟ้า (getPricePerUnit)</summary>
+      <div class="pl-6">
+        <div><code>Peak</code> : 12:00–13:00 และ 17:00–17:30 = <b>4.1839</b> บาท/หน่วย</div>
+        <div><code>Off-peak</code> : 00:00–01:00 และ 05:00–05:30 = <b>2.6037</b> บาท/หน่วย</div>
+        <div><code>Normal</code> : ช่วงอื่น ๆ = <b>3.5000</b> บาท/หน่วย</div>
+      </div>
+    </details>
+
+    <details open class="mb-2">
+      <summary class="font-medium">3) เวลาโดยรวม/เวลาเต็ม</summary>
+      <ul class="list-disc pl-6">
+        <li><code>TotalDurationMinutes = (100 − StartPercent) × 1.45</code></li>
+        <li><code>TotalDurationMs = TotalDurationMinutes × 60 × 1000</code></li>
+        <li><code>FullTime = StartedAt + TotalDurationMs</code></li>
+      </ul>
+    </details>
+
+    <details open class="mb-2">
+      <summary class="font-medium">4) เปอร์เซ็นต์ปัจจุบัน/นับถอยหลัง</summary>
+      <ul class="list-disc pl-6">
+        <li><code>PercentGained = ElapsedMinutes / 1.45</code></li>
+        <li><code>CurrentPercent = min(100, StartPercent + PercentGained)</code></li>
+        <li><code>RemainingMs = TotalDurationMs − ElapsedMs</code></li>
+      </ul>
+    </details>
+
+    <details open class="mb-2">
+      <summary class="font-medium">5) หน่วย (kWh) และค่าไฟแบบเรียลไทม์</summary>
+      <ul class="list-disc pl-6">
+        <li>อัตราหน่วย/ชั่วโมงคงที่: <code>16</code> ⇒ <code>CurrentUnits = (ElapsedMinutes × 16) / 60</code></li>
+        <li><code>CurrentCost = CurrentUnits × PricePerUnit</code>, โดย <code>PricePerUnit = getPricePerUnit(StartTime)</code></li>
+      </ul>
+    </details>
+
+    <details open class="mb-2">
+      <summary class="font-medium">6) การแจ้งเตือน</summary>
+      <ul class="list-disc pl-6">
+        <li><b>ชาร์จเต็ม 100%</b>: เมื่อ <code>CurrentPercent ≥ 100</code> → แจ้งเตือน + สั่น + เสียง</li>
+        <li><b>เตือนรอบเวลา (ล่วงหน้า 5 นาที)</b>: <code>11:45</code>, <code>16:45</code>, <code>23:45</code></li>
+      </ul>
+    </details>
+  </div>`;
+
+  if (typeof Swal !== 'undefined' && Swal && Swal.fire) {
+    Swal.fire({
+      title: 'สูตรคำนวณ',
+      html,
+      width: 780,
+      showCancelButton: false,
+      confirmButtonText: 'ปิด',
+      showDenyButton: true,
+      denyButtonText: 'คัดลอกสูตร',
+    }).then((res)=>{ if(res.isDenied){ window.copyFormulaText(); } });
+  } else {
+    // Fallback
+    alert('สูตรคำนวณ:\\n(1) 1.45 นาทีต่อ 1% | 16 หน่วย/ชม.\\n(2) ราคา: Peak 4.1839 | Off-peak 2.6037 | ปกติ 3.5\\n(3) เวลา: (100−Start%)×1.45 และ FullTime=Started+Duration\\n(4) %ปัจจุบัน = Start% + Elapsed/1.45, นับถอยหลัง = Total−Elapsed\\n(5) หน่วย=(Elapsed×16)/60, ค่าไฟ=หน่วย×ราคา\\n(6) แจ้งเตือน 100% และเตือนรอบเวลา -5 นาที');
+  }
+};
+</script>
+
 </body>
 </html>
