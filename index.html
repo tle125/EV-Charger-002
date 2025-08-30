@@ -1417,10 +1417,9 @@
             const today = new Date();
             const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
 
-            let todaysRecords = records.filter(r => r.date === todayStr);
+            const todaysRecords = records.filter(r => r.date === todayStr)
+                                         .sort((a, b) => a.startTime.localeCompare(b.startTime));
 
-            // Sort records by start time
-            todaysRecords.sort((a, b) => a.startTime.localeCompare(b.startTime));
 
             if (todaysRecords.length === 0) {
                 container.innerHTML = `<div class="text-center text-gray-500 py-8">ยังไม่มีการชาร์จสำหรับวันนี้</div>`;
@@ -1650,7 +1649,9 @@
                                 callback: function(value) {
                                     return '฿' + value.toFixed(2);
                                 }
-                            }
+                            },
+                            // เพิ่มช่องว่างด้านบนของกราฟ 20%
+                            grace: '20%'
                         }
                     }
                 }
@@ -1807,3 +1808,4 @@
     </script>
 </body>
 </html>
+
