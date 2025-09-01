@@ -1299,7 +1299,12 @@
                 };
 
                 const batch = writeBatch(db);
-                const historyDocRef = doc(collection(db, `artifacts/${appId}/history`));
+                
+                // --- NEW DOCUMENT ID FORMAT ---
+                const formattedStartTime = session.startTime.replace(':', '-');
+                const newDocId = `${session.date}_${session.licensePlate}_${formattedStartTime}`;
+                const historyDocRef = doc(db, `artifacts/${appId}/history`, newDocId);
+
                 batch.set(historyDocRef, historyData);
                 batch.delete(activeSessionRef);
 
