@@ -1583,50 +1583,115 @@
                 container.innerHTML = `<div class="text-center text-gray-500 py-8">ไม่พบข้อมูลตามตัวกรอง</div>`;
                 return;
             }
-            const groupedData = groupRecordsByVehicleMonthWeek(filteredRecords);
-            container.innerHTML = '<div class="overflow-x-auto"></div>';
-            buildHistoryDOM(groupedData, container.firstElementChild);
+            // UPDATED: Changed grouping function
+            const groupedData = groupRecordsByMonthWeekVehicle(filteredRecords);
+            container.innerHTML = ''; // Clear container before building
+            buildHistoryDOM(groupedData, container);
         }
 
         function buildHistoryDOM(groupedData, container) {
-            Object.keys(groupedData).sort().forEach(vehicle => {
-                const vehicleData = groupedData[vehicle];
-                const vehicleSection = document.createElement('div');
-                vehicleSection.className = 'mb-8';
-                vehicleSection.innerHTML = `<div class="bg-blue-50 border-l-4 border-blue-500 p-4 mb-4"><h3 class="text-lg font-bold text-blue-800">🚗 รถ ${vehicle}</h3></div>`;
+            // Level 1: Month
+            Object.keys(groupedData).sort().reverse().forEach(month => {
+                const monthData = groupedData[month];
+                const monthTotals = calculateTotals(Object.values(monthData).flatMap(week => Object.values(week)).flat());
+                const monthId = `details-${month}`;
                 
-                Object.keys(vehicleData).sort().reverse().forEach(month => {
-                    const monthData = vehicleData[month];
-                    const monthTotals = calculateTotals(Object.values(monthData).flat());
-                    const monthSection = document.createElement('div');
-                    monthSection.className = 'mb-6';
-                    monthSection.innerHTML = `<div class="bg-gray-50 border border-gray-200 rounded-t-lg p-4"><div class="flex justify-between items-center"><h4 class="text-md font-semibold text-gray-800">📅 ${formatMonthToThai(month)}</h4><div class="text-sm text-gray-600"><span class="mr-4">ครั้ง: ${monthTotals.count}</span><span class="mr-4">หน่วย: ${monthTotals.units.toFixed(2)}</span><span class="text-green-600 font-semibold">฿${monthTotals.cost.toFixed(2)}</span></div></div></div>`;
+                const monthElement = document.createElement('div');
+                monthElement.className = 'mb-6';
+                monthElement.innerHTML = `
+                    <div class="bg-blue-100 border-l-4 border-blue-500 rounded-r-lg p-4 cursor-pointer hover:bg-blue-200 transition" onclick="window.toggleDetails('${monthId}')">
+                        <div class="flex justify-between items-center">
+                            <div class="flex items-center">
+                                <h3 class="text-lg font-bold text-blue-800">📅 ${formatMonthToThai(month)}</h3>
+                                <span id="toggle-icon-${monthId}" class="ml-3 text-blue-600 transform transition-transform">▼</span>
+                            </div>
+                            <div class="text-sm text-gray-700">
+                                <span class="mr-4">ครั้ง: <strong>${monthTotals.count}</strong></span>
+                                <span class="mr-4">หน่วย: <strong>${monthTotals.units.toFixed(2)}</strong></span>
+                                <span class="text-green-600 font-semibold">฿${monthTotals.cost.toFixed(2)}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                const weeksContainer = document.createElement('div');
+                weeksContainer.id = monthId;
+                weeksContainer.className = 'hidden pl-4 pt-4 space-y-4';
+
+                // Level 2: Week
+                Object.keys(monthData).sort().forEach(week => {
+                    const weekData = monthData[week];
+                    const weekTotals = calculateTotals(Object.values(weekData).flat());
+                    const weekId = `details-${month}-${week.replace(/ /g, '-')}`;
+
+                    const weekElement = document.createElement('div');
+                    weekElement.innerHTML = `
+                        <div class="bg-gray-50 border rounded-lg p-3 cursor-pointer hover:bg-gray-100" onclick="window.toggleDetails('${weekId}')">
+                            <div class="flex justify-between items-center">
+                                <div class="flex items-center">
+                                    <h4 class="text-md font-semibold text-gray-800">📊 ${week}</h4>
+                                    <span id="toggle-icon-${weekId}" class="ml-2 text-gray-500 transform transition-transform">▼</span>
+                                </div>
+                                <div class="text-sm text-gray-600">
+                                    <span class="mr-3">ครั้ง: <strong>${weekTotals.count}</strong></span>
+                                    <span class="mr-3">หน่วย: <strong>${weekTotals.units.toFixed(2)}</strong></span>
+                                    <span class="text-green-600 font-medium">฿${weekTotals.cost.toFixed(2)}</span>
+                                </div>
+                            </div>
+                        </div>
+                    `;
                     
-                    const weeksContainer = document.createElement('div');
-                    weeksContainer.className = 'border-l border-r border-b border-gray-200 rounded-b-lg';
-                    Object.keys(monthData).sort().forEach((week, index) => {
-                        const weekRecords = monthData[week];
-                        const weekTotals = calculateTotals(weekRecords);
-                        const weekId = `week-${vehicle}-${month}-${week.replace(/ /g, '-')}`;
-                        const weekSection = document.createElement('div');
-                        weekSection.className = index > 0 ? 'border-t border-gray-100' : '';
-                        weekSection.innerHTML = `<div class="bg-white p-3 cursor-pointer hover:bg-gray-50" onclick="window.toggleWeekDetails('${weekId}')"><div class="flex justify-between items-center"><div class="flex items-center"><span class="text-sm font-medium text-gray-700">📊 ${week}</span><span id="toggle-icon-${weekId}" class="ml-2 text-gray-400">▼</span></div><div class="text-sm text-gray-600"><span class="mr-3">ครั้ง: ${weekTotals.count}</span><span class="mr-3">หน่วย: ${weekTotals.units.toFixed(2)}</span><span class="text-green-600 font-medium">฿${weekTotals.cost.toFixed(2)}</span></div></div></div><div id="${weekId}" class="hidden bg-gray-50 p-4 overflow-x-auto"><table class="w-full text-sm whitespace-nowrap"><thead><tr class="text-gray-600"><th class="text-left py-2 px-2">วันที่</th><th class="text-left py-2 px-2">เครื่องชาร์จ</th><th class="text-left py-2 px-2">เวลา</th><th class="text-left py-2 px-2">ระยะเวลา</th><th class="text-left py-2 px-2">% ก่อน</th><th class="text-left py-2 px-2">% หลัง</th><th class="text-left py-2 px-2">หน่วย</th><th class="text-left py-2 px-2">ราคา/หน่วย</th><th class="text-left py-2 px-2">ค่าไฟ</th><th class="text-left py-2 px-2">ผู้บันทึก</th></tr></thead><tbody>${weekRecords.map(record => `
-                            <tr class="border-t border-gray-200"><td class="py-2 px-2">${formatDateToThai(record.date)}</td><td class="py-2 px-2 text-green-600">${record.chargerName || '-'}</td><td class="py-2 px-2">${formatTimeToShort(record.startTime || '-')}${record.endTime ? ' - ' + formatTimeToShort(record.endTime) : ''}</td><td class="py-2 px-2">${record.duration || '-'} นาที</td><td class="py-2 px-2 text-gray-600">${record.kwhBefore}%</td><td class="py-2 px-2 text-gray-600">${record.kwhAfter || '-'}%</td><td class="py-2 px-2">${record.units || '-'}</td><td class="py-2 px-2 text-blue-600">฿${parseFloat(record.pricePerUnit || 0).toFixed(4)}</td><td class="py-2 px-2 text-green-600">฿${parseFloat(record.electricityCost || 0).toFixed(2)}</td><td class="py-2 px-2 font-medium">${record.recordedBy || '-'}</td></tr>`).join('')}</tbody></table></div>`;
-                        weeksContainer.appendChild(weekSection);
+                    const vehiclesContainer = document.createElement('div');
+                    vehiclesContainer.id = weekId;
+                    vehiclesContainer.className = 'hidden p-3 bg-gray-50 border-l border-r border-b rounded-b-lg space-y-2';
+
+                    // Level 3: Vehicle
+                    Object.keys(weekData).sort().forEach(vehicle => {
+                        const vehicleRecords = weekData[vehicle];
+                        const vehicleId = `details-${month}-${week.replace(/ /g, '-')}-${vehicle}`;
+
+                        const vehicleElement = document.createElement('div');
+                        vehicleElement.innerHTML = `
+                            <div class="bg-white rounded shadow-sm p-2 cursor-pointer" onclick="window.toggleDetails('${vehicleId}')">
+                                <div class="flex justify-between items-center">
+                                     <h5 class="text-sm font-medium text-gray-700">🚗 ${vehicle}</h5>
+                                     <span id="toggle-icon-${vehicleId}" class="ml-2 text-gray-400 transform transition-transform text-xs">▼</span>
+                                </div>
+                            </div>
+                        `;
+
+                        const tableContainer = document.createElement('div');
+                        tableContainer.id = vehicleId;
+                        tableContainer.className = 'hidden p-2 overflow-x-auto';
+                        tableContainer.innerHTML = `<table class="w-full text-sm whitespace-nowrap"><thead><tr class="text-gray-600"><th class="text-left py-2 px-2">วันที่</th><th class="text-left py-2 px-2">เครื่องชาร์จ</th><th class="text-left py-2 px-2">เวลา</th><th class="text-left py-2 px-2">ระยะเวลา</th><th class="text-left py-2 px-2">% ก่อน</th><th class="text-left py-2 px-2">% หลัง</th><th class="text-left py-2 px-2">หน่วย</th><th class="text-left py-2 px-2">ราคา/หน่วย</th><th class="text-left py-2 px-2">ค่าไฟ</th><th class="text-left py-2 px-2">ผู้บันทึก</th></tr></thead><tbody>${vehicleRecords.map(record => `
+                            <tr class="border-t border-gray-200"><td class="py-2 px-2">${formatDateToThai(record.date)}</td><td class="py-2 px-2 text-green-600">${record.chargerName || '-'}</td><td class="py-2 px-2">${formatTimeToShort(record.startTime || '-')}${record.endTime ? ' - ' + formatTimeToShort(record.endTime) : ''}</td><td class="py-2 px-2">${record.duration || '-'} นาที</td><td class="py-2 px-2 text-gray-600">${record.kwhBefore}%</td><td class="py-2 px-2 text-gray-600">${record.kwhAfter || '-'}%</td><td class="py-2 px-2">${record.units || '-'}</td><td class="py-2 px-2 text-blue-600">฿${parseFloat(record.pricePerUnit || 0).toFixed(4)}</td><td class="py-2 px-2 text-green-600">฿${parseFloat(record.electricityCost || 0).toFixed(2)}</td><td class="py-2 px-2 font-medium">${record.recordedBy || '-'}</td></tr>`).join('')}</tbody></table>`;
+                        
+                        vehicleElement.appendChild(tableContainer);
+                        vehiclesContainer.appendChild(vehicleElement);
                     });
-                    monthSection.appendChild(weeksContainer);
-                    vehicleSection.appendChild(monthSection);
+
+                    weekElement.appendChild(vehiclesContainer);
+                    weeksContainer.appendChild(weekElement);
                 });
-                container.appendChild(vehicleSection);
+
+                monthElement.appendChild(weeksContainer);
+                container.appendChild(monthElement);
             });
         }
         
-        window.toggleWeekDetails = function(weekId) {
-            const details = document.getElementById(weekId);
-            const icon = document.getElementById(`toggle-icon-${weekId}`);
-            details.classList.toggle('hidden');
-            icon.textContent = details.classList.contains('hidden') ? '▼' : '▲';
+        // Unified toggle function
+        window.toggleDetails = function(elementId) {
+            const details = document.getElementById(elementId);
+            const icon = document.getElementById(`toggle-icon-${elementId}`);
+            if (details && icon) {
+                const isHidden = details.classList.toggle('hidden');
+                icon.style.transform = isHidden ? 'rotate(0deg)' : 'rotate(180deg)';
+            }
         }
+
+        // DEPRECATED: Replaced by unified toggleDetails
+        // window.toggleMonthDetails = function(monthId) { ... }
+        // window.toggleWeekDetails = function(weekId) { ... }
 
         function initializeSummaryFilters() {
             const vehicleFilter = document.getElementById('summaryVehicleFilter');
@@ -1887,7 +1952,7 @@
                 container.appendChild(chargerSection);
             });
         }
-        function groupRecordsByVehicleMonthWeek(records) { 
+        function groupRecordsByMonthWeekVehicle(records) { 
             const grouped = {};
             records.forEach(record => {
                 const vehicle = record.licensePlate;
@@ -1895,10 +1960,12 @@
                 const month = `${date.getFullYear()}-${String(date.getMonth() + 1).toString().padStart(2, '0')}`;
                 const weekOfMonth = Math.ceil((date.getDate() + new Date(date.getFullYear(), date.getMonth(), 1).getDay()) / 7);
                 const week = `สัปดาห์ที่ ${weekOfMonth}`;
-                if (!grouped[vehicle]) grouped[vehicle] = {};
-                if (!grouped[vehicle][month]) grouped[vehicle][month] = {};
-                if (!grouped[vehicle][month][week]) grouped[vehicle][month][week] = [];
-                grouped[vehicle][month][week].push(record);
+                
+                if (!grouped[month]) grouped[month] = {};
+                if (!grouped[month][week]) grouped[month][week] = {};
+                if (!grouped[month][week][vehicle]) grouped[month][week][vehicle] = [];
+                
+                grouped[month][week][vehicle].push(record);
             });
             return grouped;
         }
@@ -1920,4 +1987,6 @@
     </script>
 </body>
 </html>
+
+
 
