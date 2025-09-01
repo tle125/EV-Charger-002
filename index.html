@@ -767,7 +767,22 @@
         
         window.toggleImportTool = function() {
             const importWrapper = document.getElementById('import-wrapper');
+            const showImportBtn = document.getElementById('show-import-btn');
+            const isCurrentlyHidden = importWrapper.classList.contains('hidden');
+
             importWrapper.classList.toggle('hidden');
+
+            if (isCurrentlyHidden) {
+                // It was hidden, now it's visible
+                showImportBtn.innerHTML = '⚙️ ซ่อนเครื่องมือ';
+                showImportBtn.classList.remove('bg-orange-100', 'hover:bg-orange-200', 'text-orange-700');
+                showImportBtn.classList.add('bg-gray-200', 'hover:bg-gray-300', 'text-gray-800');
+            } else {
+                // It was visible, now it's hidden
+                showImportBtn.innerHTML = '⚙️ นำเข้าข้อมูลเก่า';
+                showImportBtn.classList.remove('bg-gray-200', 'hover:bg-gray-300', 'text-gray-800');
+                showImportBtn.classList.add('bg-orange-100', 'hover:bg-orange-200', 'text-orange-700');
+            }
         }
 
 
@@ -1872,7 +1887,7 @@
             records.forEach(record => {
                 const vehicle = record.licensePlate;
                 const date = new Date(record.date);
-                const month = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}`;
+                const month = `${date.getFullYear()}-${String(date.getMonth() + 1).toString().padStart(2, '0')}`;
                 const weekOfMonth = Math.ceil((date.getDate() + new Date(date.getFullYear(), date.getMonth(), 1).getDay()) / 7);
                 const week = `สัปดาห์ที่ ${weekOfMonth}`;
                 if (!grouped[vehicle]) grouped[vehicle] = {};
